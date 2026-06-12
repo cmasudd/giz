@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuencas y Proyectos Mineros - Evolución Temporal</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        
+        .timeline-control {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            z-index: 1000;
+            width: 600px;
+        }
+        
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .year-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .play-pause-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .play-pause-btn:hover {
+            background: #2980b9;
+        }
+        
+        .timeline-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #ecf0f1;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .timeline-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+        }
+        
+        .timeline-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .layer-control {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .layer-control h4 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            color: #2c3e50;
+        }
+        
+        .layer-option {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        
+        .layer-option label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        
+        .layer-option input {
+            margin-right: 6px;
+        }
+        
+        .toggle-layers {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .toggle-btn {
+            padding: 6px 12px;
+            background: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .toggle-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 380px;
+            max-height: 90vh;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .info-panel.active { display: block; }
+        
+        .info-panel h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+            font-size: 16px;
+        }
+        
+        .info-panel .close-btn {
+            float: right;
+            cursor: pointer;
+            font-size: 20px;
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .rank-badge {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 11px;
+            margin-left: 6px;
+        }
+        
+        .rank-badge.top3 { background: #e74c3c; }
+        .rank-badge.top10 { background: #f39c12; }
+        .rank-badge.others { background: #95a5a6; }
+        
+        .score-container {
+            margin: 12px 0;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 5px;
+        }
+        
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 4px 0;
+            padding: 3px 0;
+            font-size: 13px;
+        }
+        
+        .score-label {
+            font-weight: 600;
+            color: #34495e;
+        }
+        
+        .score-value {
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 3px;
+            background: white;
+        }
+        
+        .score-value.high { color: #e74c3c; }
+        .score-value.medium { color: #f39c12; }
+        .score-value.low { color: #27ae60; }
+        
+        .chart-container {
+            margin: 15px 0;
+            position: relative;
+            height: 240px;
+        }
+        
+        .data-row {
+            margin: 6px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-left: 3px solid #3498db;
+            border-radius: 3px;
+        }
+        
+        .data-label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        
+        .data-value {
+            color: #34495e;
+            font-size: 13px;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 130px;
+            left: 10px;
+            background: white;
+            padding: 12px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .legend-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-size: 13px;
+        }
+        
+        .legend-item {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+        }
+        
+        .legend-color {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid white;
+            box-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+        
+        .legend-square {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            border: 2px solid #34495e;
+        }
+        
+        .search-box {
+            position: absolute;
+            top: 10px;
+            left: 180px;
+            z-index: 1000;
+        }
+        
+        .search-box input {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 280px;
+            font-size: 14px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .tab {
+            padding: 7px 10px;
+            background: #ecf0f1;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+            flex: 1;
+        }
+        
+        .tab.active {
+            background: #3498db;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        h4 {
+            font-size: 13px;
+            color: #2c3e50;
+            margin: 15px 0 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="layer-control">
+        <h4>🗺️ Capas del Mapa</h4>
+        <div class="layer-option">
+            <label><input type="radio" name="basemap" value="topo" checked> Topográfico</label>
+        </div>
+        <div class="layer-option">
+            <label><input type="radio" name="basemap" value="street"> Calles</label>
+        </div>
+        <div class="layer-option">
+            <label><input type="radio" name="basemap" value="satellite"> Satélite</label>
+        </div>
+        
+        <h4 style="margin-top: 15px;">📍 Mostrar</h4>
+        <div class="toggle-layers">
+            <button class="toggle-btn active" id="toggleCuencas">Cuencas</button>
+            <button class="toggle-btn active" id="toggleProyectos">Proyectos</button>
+        </div>
+    </div>
+    
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Buscar cuenca o proyecto...">
+    </div>
+    
+    <div class="info-panel" id="infoPanel">
+        <span class="close-btn" onclick="closePanel()">&times;</span>
+        <div id="panelContent"></div>
+    </div>
+    
+    <div class="legend">
+        <div class="legend-title">Cuencas (Score)</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #e74c3c;"></div>
+            <span>Crítica (≥2.5)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #f39c12;"></div>
+            <span>Alta (2.0-2.5)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #f1c40f;"></div>
+            <span>Media (1.5-2.0)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #27ae60;"></div>
+            <span>Baja (<1.5)</span>
+        </div>
+        
+        <div class="legend-title" style="margin-top: 15px;">Proyectos (Status)</div>
+        <div class="legend-item">
+            <div class="legend-square" style="background: #2ecc71; border-color: #27ae60;"></div>
+            <span>Operando</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-square" style="background: #f39c12; border-color: #e67e22;"></div>
+            <span>Construcción</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-square" style="background: #e74c3c; border-color: #c0392b;"></div>
+            <span>Paralizado</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-square" style="background: #95a5a6; border-color: #7f8c8d;"></div>
+            <span>Cerrado</span>
+        </div>
+    </div>
+    
+    <div class="timeline-control">
+        <div class="timeline-header">
+            <span class="year-display" id="yearDisplay">2025</span>
+            <button class="play-pause-btn" id="playPauseBtn" onclick="togglePlay()">▶ Play</button>
+        </div>
+        <input type="range" min="1899" max="2026" value="2025" class="timeline-slider" id="timelineSlider">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #7f8c8d; margin-top: 5px;">
+            <span>1899</span>
+            <span>2026</span>
+        </div>
+    </div>
+
+    <script>
+        // Datos
+        const cuencasData = [{"cuenca": "Salar de Atacama", "pais": "Chile", "region": "Antofagasta, San Pedro Atacama", "mineral": "Litio", "operaciones": "SQM, Albemarle", "produccion": "243,000 LCE (USGS 2024; reportes anuales empresas)", "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Extremely High (WRI Aqueduct 4.0)", "poblacion": "~11k Comuna SPA", "comunidades": "Conflicto", "rank": 1, "d1_score": 3.0, "d2_score": 2.875, "d3_score": 2.0, "d4_score": 2.0, "score_final": 2.7, "n11": 3.0, "n12": 3.0, "n21": 3.0, "n22": 2.5, "n23": 3.0, "n31": 2.0, "n32": 2.0, "n41": 2.0}, {"cuenca": "Subcuenca Monturaqui-Negrillar", "pais": "Chile", "region": "Antofagasta, Sierra Gorda", "mineral": "Cobre+Mo", "operaciones": "Escondida (BHP)", "produccion": "~1,000,000 Cu (USGS 2024; reportes anuales empresas)", "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Extremely High (WRI Aqueduct 4.0)", "poblacion": "~3,000 área influencia", "comunidades": "Lickanantay Peine; d", "rank": 2, "d1_score": 3.0, "d2_score": 2.375, "d3_score": 1.5, "d4_score": 2.0, "score_final": 2.45, "n11": 3.0, "n12": 3.0, "n21": 3.0, "n22": 1.5, "n23": 1.0, "n31": 1.0, "n32": 2.0, "n41": 2.0}, {"cuenca": "Río Moquegua", "pais": "Perú", "region": "Moquegua-Tacna", "mineral": "Cobre", "operaciones": "Cuajone, Toquepala (Southern); Quellaveco (An...", "produccion": "750,000 ton Cu (USGS 2024; Southern Copper 2024; Anglo American 2024)", "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Extremely High (WRI Aqueduct 4.0)", "poblacion": "Valle Moquegua ~80k (población", "comunidades": "TI formal", "rank": 3, "d1_score": 2.71, "d2_score": 2.25, "d3_score": 2.5, "d4_score": 2.0, "score_final": 2.4, "n11": 3.0, "n12": 2.0, "n21": 3.0, "n22": 1.0, "n23": 1.0, "n31": 3.0, "n32": 2.0, "n41": 2.0}, {"cuenca": "Río Cachapoal", "pais": "Chile", "region": "O'Higgins, Rancagua", "mineral": "Cobre", "operaciones": "El Teniente", "produccion": "Incluido (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "Rancagua ~250k", "comunidades": "Sin indígenas; agric", "rank": 4, "d1_score": 3.0, "d2_score": 1.75, "d3_score": 2.0, "d4_score": 1.5, "score_final": 2.17, "n11": 3.0, "n12": 3.0, "n21": 2.0, "n22": 1.0, "n23": 2.0, "n31": 3.0, "n32": 1.0, "n41": 1.5}, {"cuenca": "Río Loa", "pais": "Chile", "region": "Antofagasta, Calama", "mineral": "Cobre+Mo", "operaciones": "Chuquicamata, Radomiro Tomic (Codelco)", "produccion": "615,000 Cu (USGS 2024; reportes anuales empresas)", "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Extremely High (WRI Aqueduct 4.0)", "poblacion": "Calama ~170k", "comunidades": "Atacameño/Quechua; Q", "rank": 5, "d1_score": 2.0, "d2_score": 2.375, "d3_score": 2.5, "d4_score": 1.5, "score_final": 2.12, "n11": 2.0, "n12": 2.0, "n21": 3.0, "n22": 1.0, "n23": 2.0, "n31": 3.0, "n32": 2.0, "n41": 1.5}, {"cuenca": "Río Limarí", "pais": "Chile", "region": "Coquimbo, Ovalle", "mineral": "Cobre", "operaciones": "Los Pelambres", "produccion": "Incluido (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "~150k cuenca", "comunidades": "Diaguita; competenci", "rank": 6, "d1_score": 3.0, "d2_score": 1.625, "d3_score": 2.0, "d4_score": 1.5, "score_final": 2.12, "n11": 3.0, "n12": 3.0, "n21": 2.0, "n22": 1.0, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.5}, {"cuenca": "Río Choapa", "pais": "Chile", "region": "Coquimbo, Illapel", "mineral": "Cobre+Oro", "operaciones": "Los Pelambres parte", "produccion": "Incluido (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "~80k cuenca", "comunidades": "Mestiza; mineros art", "rank": 7, "d1_score": 3.0, "d2_score": 1.625, "d3_score": 2.0, "d4_score": 1.5, "score_final": 2.12, "n11": 3.0, "n12": 3.0, "n21": 2.0, "n22": 1.0, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.5}, {"cuenca": "Salar del Hombre Muerto", "pais": "Argentina", "region": "Catamarca, Antofagasta Sierra", "mineral": "Litio", "operaciones": "Livent", "produccion": "22,500 LCE (USGS 2024; reportes anuales empresas)", "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "High (WRI Aqueduct 4.0)", "poblacion": "Antofagasta Sierra ~1,200", "comunidades": "Atacama argentinas; ", "rank": 8, "d1_score": 3.0, "d2_score": 2.062, "d3_score": 1.0, "d4_score": 1.0, "score_final": 2.12, "n11": 3.0, "n12": 3.0, "n21": 2.5, "n22": 1.0, "n23": 2.0, "n31": 1.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Río Sonora", "pais": "México", "region": "Sonora, Cananea", "mineral": "Cobre", "operaciones": "Grupo México (Cananea, Buenavista)", "produccion": "~450,000 Cu (USGS 2024; reportes anuales empresas)", "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "High (WRI Aqueduct 4.0)", "poblacion": "40-50k cuenca", "comunidades": "Ópata histórico exti", "rank": 9, "d1_score": 2.29, "d2_score": 1.938, "d3_score": 2.0, "d4_score": 1.5, "score_final": 2.0, "n11": 2.0, "n12": 3.0, "n21": 2.5, "n22": 1.0, "n23": 1.0, "n31": 2.0, "n32": 2.0, "n41": 1.5}, {"cuenca": "Río Maipo", "pais": "Chile", "region": "RM Santiago, Cajón Maipo", "mineral": "Cobre+Mo", "operaciones": "El Teniente (Codelco)", "produccion": "455,000 Cu (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "Santiago 7M depende cuenca", "comunidades": "Sin indígenas; urban", "rank": 10, "d1_score": 2.0, "d2_score": 2.0, "d3_score": 1.5, "d4_score": 2.0, "score_final": 1.95, "n11": 2.0, "n12": 2.0, "n21": 2.0, "n22": 2.5, "n23": 1.0, "n31": 1.0, "n32": 2.0, "n41": 2.0}, {"cuenca": "Salar de Olaroz-Cauchari", "pais": "Argentina", "region": "Jujuy, Susques", "mineral": "Litio", "operaciones": "Allkem", "produccion": "19,000 LCE (USGS 2024; reportes anuales empresas)", "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "High (WRI Aqueduct 4.0)", "poblacion": "Susques ~2,500", "comunidades": "Conflicto", "rank": 11, "d1_score": 2.29, "d2_score": 1.938, "d3_score": 1.5, "d4_score": 1.0, "score_final": 1.88, "n11": 2.0, "n12": 3.0, "n21": 2.5, "n22": 1.0, "n23": 1.0, "n31": 1.0, "n32": 2.0, "n41": 1.0}, {"cuenca": "Cuenca Alta Río Copiapóga", "pais": "Chile", "region": "Atacama, Tierra Amarilla", "mineral": "Litio", "operaciones": "SCL (SQM-Codelco JV)", "produccion": "Proyectado (USGS 2024; reportes anuales empresas)", "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Extremely High (WRI Aqueduct 4.0)", "poblacion": "Misma población valle Copiapó", "comunidades": "Agricultores organiz", "rank": 12, "d1_score": 1.57, "d2_score": 2.25, "d3_score": 2.0, "d4_score": 1.5, "score_final": 1.87, "n11": 1.0, "n12": 3.0, "n21": 3.0, "n22": 1.0, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.5}, {"cuenca": "Cuenca Rio Trombetas-Oriximiná", "pais": "Brasil", "region": "Pará, Oriximiná", "mineral": "Bauxita (Aluminio)", "operaciones": "MRN", "produccion": "~18M ton bauxita (USGS 2024; reportes anuales empresas)", "bws": "10-20% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Low (WRI Aqueduct 4.0)", "poblacion": "~60k região", "comunidades": "Povos: Wai-Wai, Hixk", "rank": 13, "d1_score": 3.0, "d2_score": 1.125, "d3_score": 2.0, "d4_score": 1.0, "score_final": 1.85, "n11": 3.0, "n12": 3.0, "n21": 1.0, "n22": 1.5, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Cuenca Rio Jequitinhonha-Mucuri", "pais": "Brasil", "region": "Minas Gerais NE", "mineral": "Litio+Grafito+TR", "operaciones": "Sigma Lithium, CBL, AMG", "produccion": "~2,500 Li proyect; ~30k grafito (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "30-50k influencia directa", "comunidades": "Sin indígenas signif", "rank": 14, "d1_score": 1.57, "d2_score": 2.0, "d3_score": 1.5, "d4_score": 2.0, "score_final": 1.8, "n11": 1.0, "n12": 3.0, "n21": 2.0, "n22": 1.5, "n23": 3.0, "n31": 2.0, "n32": 1.0, "n41": 2.0}, {"cuenca": "Río Elqui", "pais": "Chile", "region": "Coquimbo, La Serena", "mineral": "Cobre+Mo", "operaciones": "Los Pelambres (Antofagasta Minerals)", "produccion": "327,000 Cu (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "Valle Elqui ~200k", "comunidades": "Conflicto", "rank": 15, "d1_score": 1.71, "d2_score": 1.75, "d3_score": 2.5, "d4_score": 1.5, "score_final": 1.77, "n11": 2.0, "n12": 1.0, "n21": 2.0, "n22": 1.0, "n23": 2.0, "n31": 3.0, "n32": 2.0, "n41": 1.5}, {"cuenca": "Cuenca media Rio Loa", "pais": "Chile", "region": "Antofagasta, Calama", "mineral": "Cobre+Mo", "operaciones": "Ministro Hales, Gaby (Codelco)", "produccion": "190,000 Cu (USGS 2024; reportes anuales empresas)", "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Extremely High (WRI Aqueduct 4.0)", "poblacion": "~50k zona media", "comunidades": "Conflicto", "rank": 16, "d1_score": 1.0, "d2_score": 2.25, "d3_score": 2.5, "d4_score": 1.5, "score_final": 1.73, "n11": 1.0, "n12": 1.0, "n21": 3.0, "n22": 1.0, "n23": 1.0, "n31": 3.0, "n32": 2.0, "n41": 1.5}, {"cuenca": "Río Copiapó", "pais": "Chile", "region": "Atacama, Copiapó", "mineral": "Cobre", "operaciones": "Candelaria (Lundin)", "produccion": "155,000 Cu (USGS 2024; reportes anuales empresas)", "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Extremely High (WRI Aqueduct 4.0)", "poblacion": "Copiapó ~160k", "comunidades": "Mestiza; agricultore", "rank": 17, "d1_score": 1.0, "d2_score": 2.375, "d3_score": 2.0, "d4_score": 1.5, "score_final": 1.73, "n11": 1.0, "n12": 1.0, "n21": 3.0, "n22": 1.0, "n23": 2.0, "n31": 3.0, "n32": 1.0, "n41": 1.5}, {"cuenca": "Salar de Uyuni", "pais": "Bolivia", "region": "Potosí, Nor Lípez", "mineral": "Litio", "operaciones": "YLB (estatal)", "produccion": "~2,000 LCE (real) (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (est.) (WRI Aqueduct 4.0)", "poblacion": "30-35k influencia", "comunidades": "Conflicto", "rank": 18, "d1_score": 1.57, "d2_score": 1.875, "d3_score": 2.0, "d4_score": 1.5, "score_final": 1.72, "n11": 1.0, "n12": 3.0, "n21": 2.0, "n22": 1.0, "n23": 3.0, "n31": 2.0, "n32": 2.0, "n41": 1.5}, {"cuenca": "Río Santa", "pais": "Perú", "region": "Áncash, Cordillera Blanca", "mineral": "Cobre+Zinc", "operaciones": "Antamina", "produccion": "450,000 Cu+Zn (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "Valle ~500k", "comunidades": "Quechua; comunidades", "rank": 19, "d1_score": 1.71, "d2_score": 1.875, "d3_score": 2.0, "d4_score": 1.0, "score_final": 1.7, "n11": 2.0, "n12": 1.0, "n21": 2.0, "n22": 1.5, "n23": 2.0, "n31": 3.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Moa-Levisa-Mayarí", "pais": "Cuba", "region": "Holguín, Moa", "mineral": "Níquel+Cobalto", "operaciones": "Cubaníquel, Moa Nickel (Sherritt)", "produccion": "28,672 Ni + 2,876 Co (2023) (USGS 2024; reportes anuales empresas)", "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Low-Medium (WRI Aqueduct 4.0)", "poblacion": "Moa ~70k", "comunidades": "Población mestiza/af", "rank": 20, "d1_score": 2.0, "d2_score": 1.438, "d3_score": 2.0, "d4_score": 1.5, "score_final": 1.7, "n11": 2.0, "n12": 2.0, "n21": 1.5, "n22": 1.5, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.5}, {"cuenca": "Río Tambo", "pais": "Perú", "region": "Arequipa, Valle Tambo", "mineral": "Cobre", "operaciones": "Tía María (PARALIZADO)", "produccion": "0 (paralizado) (USGS 2024; reportes anuales empresas)", "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "High (WRI Aqueduct 4.0)", "poblacion": "Valle Tambo ~30k agricultores", "comunidades": "Mestiza agricultores", "rank": 21, "d1_score": 1.0, "d2_score": 1.938, "d3_score": 2.5, "d4_score": 2.0, "score_final": 1.68, "n11": 1.0, "n12": 1.0, "n21": 2.5, "n22": 1.0, "n23": 1.0, "n31": 2.0, "n32": 3.0, "n41": 2.0}, {"cuenca": "Salar de Maricunga", "pais": "Chile", "region": "Atacama, Diego de Almagro", "mineral": "Litio", "operaciones": "Litio Minera (Pluspetrol)", "produccion": "Exploración (USGS 2024; reportes anuales empresas)", "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Extremely High (WRI Aqueduct 4.0)", "poblacion": "Población dispersa <1,000 regi", "comunidades": "Colla; oposición com", "rank": 22, "d1_score": 1.29, "d2_score": 2.375, "d3_score": 1.0, "d4_score": 1.0, "score_final": 1.65, "n11": 1.0, "n12": 2.0, "n21": 3.0, "n22": 1.0, "n23": 2.0, "n31": 1.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Salar de Arizaro", "pais": "Argentina", "region": "Salta, Los Andes", "mineral": "Litio", "operaciones": "Eramet-Tsingshan", "produccion": "Construcción (USGS 2024; reportes anuales empresas)", "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "High (WRI Aqueduct 4.0)", "poblacion": "Población dispersa <2,000 regi", "comunidades": "Kolla dispersas; con", "rank": 23, "d1_score": 1.57, "d2_score": 1.938, "d3_score": 1.0, "d4_score": 1.5, "score_final": 1.65, "n11": 1.0, "n12": 3.0, "n21": 2.5, "n22": 1.0, "n23": 1.0, "n31": 1.0, "n32": 1.0, "n41": 1.5}, {"cuenca": "Río Apurímac", "pais": "Perú", "region": "Apurímac-Cusco", "mineral": "Cobre", "operaciones": "Las Bambas (MMG)", "produccion": "~310,000 Cu (variable) (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "15-25k influencia directa", "comunidades": "Conflicto", "rank": 24, "d1_score": 1.71, "d2_score": 1.75, "d3_score": 2.0, "d4_score": 1.0, "score_final": 1.65, "n11": 2.0, "n12": 1.0, "n21": 2.0, "n22": 1.0, "n23": 2.0, "n31": 2.0, "n32": 2.0, "n41": 1.0}, {"cuenca": "Cuenca Río San Juan", "pais": "Argentina", "region": "San Juan, Precordillera", "mineral": "Cobre+Oro", "operaciones": "Los Azules (McEwen)", "produccion": "Exploración (USGS 2024; reportes anuales empresas)", "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "High (WRI Aqueduct 4.0)", "poblacion": "~5,000 cuenca alta dispersos [", "comunidades": "Sin indígenas; rural", "rank": 25, "d1_score": 1.29, "d2_score": 2.062, "d3_score": 2.0, "d4_score": 1.0, "score_final": 1.63, "n11": 1.0, "n12": 2.0, "n21": 2.5, "n22": 1.0, "n23": 2.0, "n31": 1.0, "n32": 3.0, "n41": 1.0}, {"cuenca": "Río Aconcagua", "pais": "Chile", "region": "Valparaíso, Los Andes", "mineral": "Cobre+Mo", "operaciones": "Andina (Codelco)", "produccion": "217,000 Cu (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "Abastece Valparaíso-Viña ~1.5M", "comunidades": "Sin indígenas; urban", "rank": 26, "d1_score": 1.71, "d2_score": 1.75, "d3_score": 1.0, "d4_score": 1.5, "score_final": 1.62, "n11": 2.0, "n12": 1.0, "n21": 2.0, "n22": 1.0, "n23": 2.0, "n31": 1.0, "n32": 1.0, "n41": 1.5}, {"cuenca": "Subcuenca Salar de Atacama SO", "pais": "Chile", "region": "Antofagasta", "mineral": "Cobre", "operaciones": "Zaldívar (Barrick)", "produccion": "~140,000 Cu (USGS 2024; reportes anuales empresas)", "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Extremely High (WRI Aqueduct 4.0)", "poblacion": "~2,000 área", "comunidades": "Lickanantay Peine; d", "rank": 27, "d1_score": 1.0, "d2_score": 2.375, "d3_score": 1.5, "d4_score": 1.0, "score_final": 1.6, "n11": 1.0, "n12": 1.0, "n21": 3.0, "n22": 1.5, "n23": 1.0, "n31": 1.0, "n32": 2.0, "n41": 1.0}, {"cuenca": "Salinas Grandes", "pais": "Argentina", "region": "Jujuy-Salta", "mineral": "Litio", "operaciones": "BLOQUEADO", "produccion": "0 (bloqueado) (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "33 comunidades", "comunidades": "Kolla+Atacama; 33 co", "rank": 28, "d1_score": 1.57, "d2_score": 1.625, "d3_score": 2.5, "d4_score": 1.0, "score_final": 1.6, "n11": 1.0, "n12": 3.0, "n21": 2.0, "n22": 1.0, "n23": 1.0, "n31": 2.0, "n32": 3.0, "n41": 1.0}, {"cuenca": "Salar de Rincón", "pais": "Argentina", "region": "Salta, Los Andes", "mineral": "Litio", "operaciones": "Rio Tinto", "produccion": "Desarrollo (USGS 2024; reportes anuales empresas)", "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "High (WRI Aqueduct 4.0)", "poblacion": "~1,500 región", "comunidades": "Kolla; negociaciones", "rank": 29, "d1_score": 1.57, "d2_score": 1.938, "d3_score": 1.0, "d4_score": 1.0, "score_final": 1.57, "n11": 1.0, "n12": 3.0, "n21": 2.5, "n22": 1.0, "n23": 1.0, "n31": 1.0, "n32": 1.0, "n41": 1.0}, {"cuenca": " Subcuenca Bacadéhuachi", "pais": "México", "region": "Sonora, Puerto Libertad", "mineral": "Litio", "operaciones": "Ganfeng Lithium", "produccion": "35,000 LCE proyectado (USGS 2024; reportes anuales empresas)", "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "High (WRI Aqueduct 4.0)", "poblacion": "Puerto Libertad ~2,500", "comunidades": "Seri (Comcáac) proxi", "rank": 30, "d1_score": 1.57, "d2_score": 1.938, "d3_score": 1.0, "d4_score": 1.0, "score_final": 1.57, "n11": 1.0, "n12": 3.0, "n21": 2.5, "n22": 1.0, "n23": 1.0, "n31": 1.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Cuenca Rio Lerma-Chapala", "pais": "México", "region": "Jalisco-Guanajuato", "mineral": "Litio", "operaciones": "Bacanora-Ganfeng (SUSPENDIDO)", "produccion": "0 (suspendido) (USGS 2024; reportes anuales empresas)", "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "High (WRI Aqueduct 4.0)", "poblacion": "Cuenca ~8M habitantes", "comunidades": "Sin indígenas área p", "rank": 31, "d1_score": 1.57, "d2_score": 1.938, "d3_score": 1.0, "d4_score": 1.0, "score_final": 1.57, "n11": 1.0, "n12": 3.0, "n21": 2.5, "n22": 1.0, "n23": 1.0, "n31": 1.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Río Huasco", "pais": "Chile", "region": "Atacama, Vallenar", "mineral": "Cobre+Oro", "operaciones": "El Morro (suspendido)", "produccion": "Suspendido 2016 (USGS 2024; reportes anuales empresas)", "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "High (WRI Aqueduct 4.0)", "poblacion": "Valle ~50k", "comunidades": "Diaguita (reconocido", "rank": 32, "d1_score": 1.0, "d2_score": 1.938, "d3_score": 2.0, "d4_score": 1.5, "score_final": 1.55, "n11": 1.0, "n12": 1.0, "n21": 2.5, "n22": 1.0, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.5}, {"cuenca": "Subcuenca Rio Itacaiúnas-Cateté", "pais": "Brasil", "region": "Pará, Parauapebas", "mineral": "Níquel+Cobre", "operaciones": "Vale (Onça Puma, Salobo)", "produccion": "~50,000 Ni (USGS 2024; reportes anuales empresas)", "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Low-Medium (WRI Aqueduct 4.0)", "poblacion": "~50k área influencia", "comunidades": "Xikrin do Cateté (Ka", "rank": 33, "d1_score": 1.71, "d2_score": 1.438, "d3_score": 2.0, "d4_score": 1.0, "score_final": 1.52, "n11": 2.0, "n12": 1.0, "n21": 1.5, "n22": 1.5, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Cuenca Alto Paraopeba", "pais": "Brasil", "region": "Minas Gerais, Belo Vale", "mineral": "Níquel", "operaciones": "Anglo American", "produccion": "~40,000 Ni (USGS 2024; reportes anuales empresas)", "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Low-Medium (WRI Aqueduct 4.0)", "poblacion": "~50k área influencia", "comunidades": "Sem indígenas; rural", "rank": 34, "d1_score": 1.71, "d2_score": 1.438, "d3_score": 2.0, "d4_score": 1.0, "score_final": 1.52, "n11": 2.0, "n12": 1.0, "n21": 1.5, "n22": 1.5, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Cuenca Endorreica Pampa Despoblada", "pais": "Chile", "region": "Antofagasta, Sierra Gorda", "mineral": "Cobre", "operaciones": "Spence (BHP)", "produccion": "~200,000 Cu (USGS 2024; reportes anuales empresas)", "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Extremely High (WRI Aqueduct 4.0)", "poblacion": "Sierra Gorda ~1,500", "comunidades": "Sin indígenas zona [", "rank": 35, "d1_score": 1.0, "d2_score": 2.25, "d3_score": 1.0, "d4_score": 1.0, "score_final": 1.5, "n11": 1.0, "n12": 1.0, "n21": 3.0, "n22": 1.0, "n23": 1.0, "n31": 1.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Cuenca Endorreica Pampa Austera", "pais": "Chile", "region": "Antofagasta, Sierra Gorda", "mineral": "Cobre", "operaciones": "Sierra Gorda (KGHM-Sumitomo)", "produccion": "~140,000 Cu (USGS 2024; reportes anuales empresas)", "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Extremely High (WRI Aqueduct 4.0)", "poblacion": "Sierra Gorda ~1,500", "comunidades": "Sin indígenas [Fuent", "rank": 36, "d1_score": 1.0, "d2_score": 2.25, "d3_score": 1.0, "d4_score": 1.0, "score_final": 1.5, "n11": 1.0, "n12": 1.0, "n21": 3.0, "n22": 1.0, "n23": 1.0, "n31": 1.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Río Mantaro", "pais": "Perú", "region": "Junín, Jauja", "mineral": "Cobre+Zinc", "operaciones": "Cobriza, Toromocho", "produccion": "~120,000 múltiple (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "Valle Mantaro ~1M", "comunidades": "Conflicto", "rank": 37, "d1_score": 1.0, "d2_score": 1.75, "d3_score": 1.5, "d4_score": 2.0, "score_final": 1.5, "n11": 1.0, "n12": 1.0, "n21": 2.0, "n22": 1.0, "n23": 2.0, "n31": 1.0, "n32": 2.0, "n41": 2.0}, {"cuenca": "Río Conchos", "pais": "México", "region": "Chihuahua, Delicias", "mineral": "Cobre+Plata", "operaciones": "Santa Eulalia", "produccion": "~15,000 Cu (USGS 2024; reportes anuales empresas)", "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "High (WRI Aqueduct 4.0)", "poblacion": "~150k cuenca", "comunidades": "Tarahumara (Rarámuri", "rank": 38, "d1_score": 1.0, "d2_score": 1.938, "d3_score": 2.0, "d4_score": 1.0, "score_final": 1.48, "n11": 1.0, "n12": 1.0, "n21": 2.5, "n22": 1.0, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Yuna-Camú", "pais": "República Dominicana", "region": "La Vega-Monseñor Nouel", "mineral": "Níquel", "operaciones": "Falconbridge Dominicana (Falcondo)", "produccion": "~40,000 Ni contenido (USGS 2024; reportes anuales empresas)", "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Low-Medium (WRI Aqueduct 4.0)", "poblacion": "Bonao ~80k", "comunidades": "Sin indígenas (extin", "rank": 39, "d1_score": 1.71, "d2_score": 1.312, "d3_score": 2.0, "d4_score": 1.0, "score_final": 1.47, "n11": 2.0, "n12": 1.0, "n21": 1.5, "n22": 1.0, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Salar de Coipasa", "pais": "Bolivia", "region": "Oruro, Nor Carangas", "mineral": "Litio", "operaciones": "YLB-TBEA (China)", "produccion": "Desarrollo (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (est.) (WRI Aqueduct 4.0)", "poblacion": "Población dispersa ~2,000 regi", "comunidades": "Aymara; ayllos; nego", "rank": 40, "d1_score": 1.57, "d2_score": 1.625, "d3_score": 1.0, "d4_score": 1.0, "score_final": 1.45, "n11": 1.0, "n12": 3.0, "n21": 2.0, "n22": 1.0, "n23": 1.0, "n31": 1.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Salar de Pastos Grandes", "pais": "Bolivia", "region": "Potosí-Salta frontera", "mineral": "Litio", "operaciones": "YLB-TBEA exploración", "produccion": "Exploración (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (est.) (WRI Aqueduct 4.0)", "poblacion": "Población <1,000 región", "comunidades": "Aymara/Atacama; pobl", "rank": 41, "d1_score": 1.57, "d2_score": 1.625, "d3_score": 1.0, "d4_score": 1.0, "score_final": 1.45, "n11": 1.0, "n12": 3.0, "n21": 2.0, "n22": 1.0, "n23": 1.0, "n31": 1.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Subcuenca Rio São Francisco", "pais": "Brasil", "region": "Minas Gerais, Salinas", "mineral": "Grafito", "operaciones": "Varias pequenas", "produccion": "Artesanal (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "~30k região mineração grafito", "comunidades": "Sem indígenas signif", "rank": 42, "d1_score": 1.0, "d2_score": 2.0, "d3_score": 1.5, "d4_score": 1.0, "score_final": 1.45, "n11": 1.0, "n12": 1.0, "n21": 2.0, "n22": 2.5, "n23": 1.0, "n31": 2.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Cuenca Rio Zamora-Santiago", "pais": "Ecuador", "region": "Zamora-Chinchipe", "mineral": "Cobre+Oro", "operaciones": "Mirador (CRCC), Fruta del Norte", "produccion": "60,000 Cu + 300k oz Au (USGS 2024; reportes anuales empresas)", "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Low-Medium (WRI Aqueduct 4.0)", "poblacion": "~50k área influencia", "comunidades": "Conflicto", "rank": 43, "d1_score": 1.0, "d2_score": 1.438, "d3_score": 2.5, "d4_score": 1.0, "score_final": 1.33, "n11": 1.0, "n12": 1.0, "n21": 1.5, "n22": 1.5, "n23": 1.0, "n31": 3.0, "n32": 2.0, "n41": 1.0}, {"cuenca": "Río Rapel", "pais": "Chile", "region": "O'Higgins-Maule", "mineral": "Cobre", "operaciones": "Pequeñas varias", "produccion": "~15,000 Cu (USGS 2024; reportes anuales empresas)", "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "~300k cuenca", "comunidades": "Sin indígenas signif", "rank": 44, "d1_score": 1.0, "d2_score": 1.312, "d3_score": 2.0, "d4_score": 1.5, "score_final": 1.3, "n11": 1.0, "n12": 1.0, "n21": 1.5, "n22": 1.0, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.5}, {"cuenca": "Río Rímac", "pais": "Perú", "region": "Lima, Chosica", "mineral": "Cobre+Zinc", "operaciones": "Morococha, Casapalca", "produccion": "~50,000 múltiple (USGS 2024; reportes anuales empresas)", "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Medium-High (WRI Aqueduct 4.0)", "poblacion": "Lima 10M depende cuenca", "comunidades": "Mestiza; Morococha r", "rank": 45, "d1_score": 1.0, "d2_score": 1.625, "d3_score": 1.5, "d4_score": 1.0, "score_final": 1.3, "n11": 1.0, "n12": 1.0, "n21": 2.0, "n22": 1.0, "n23": 1.0, "n31": 2.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Cuenca rio Polochic-Lago Izabal", "pais": "Guatemala", "region": "Izabal, El Estor", "mineral": "Níquel+Cobalto", "operaciones": "CGN Solway (SUSPENDIDA 2020)", "produccion": "0 (suspendida) (USGS 2024; reportes anuales empresas)", "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Low-Medium (WRI Aqueduct 4.0)", "poblacion": "El Estor ~60k", "comunidades": "Q'eqchi' (Maya); ter", "rank": 46, "d1_score": 1.0, "d2_score": 1.312, "d3_score": 2.0, "d4_score": 1.5, "score_final": 1.3, "n11": 1.0, "n12": 1.0, "n21": 1.5, "n22": 1.0, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.5}, {"cuenca": "Cuenca Rio Parauapebas-Carajás", "pais": "Brasil", "region": "Pará, Parauapebas", "mineral": "Cobre+Níquel", "operaciones": "Vale (Sossego, Salobo)", "produccion": "~150,000 Cu (USGS 2024; reportes anuales empresas)", "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Low-Medium (WRI Aqueduct 4.0)", "poblacion": "Parauapebas ~200k (mineração)", "comunidades": "Xikrin; TI Cateté; c", "rank": 47, "d1_score": 1.0, "d2_score": 1.438, "d3_score": 2.0, "d4_score": 1.0, "score_final": 1.28, "n11": 1.0, "n12": 1.0, "n21": 1.5, "n22": 1.5, "n23": 1.0, "n31": 3.0, "n32": 1.0, "n41": 1.0}, {"cuenca": "Cuenca endorreica Sierra Santa Cruz", "pais": "Guatemala", "region": "Alta Verapaz", "mineral": "Níquel+Cobalto+TR", "operaciones": "CANCELADAS 2025", "produccion": "0 (canceladas) (USGS 2024; reportes anuales empresas)", "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)", "wri": "Low-Medium (WRI Aqueduct 4.0)", "poblacion": "~40k área", "comunidades": "Q'eqchi'; oposición ", "rank": 48, "d1_score": 1.0, "d2_score": 1.312, "d3_score": 2.0, "d4_score": 1.0, "score_final": 1.22, "n11": 1.0, "n12": 1.0, "n21": 1.5, "n22": 1.0, "n23": 1.0, "n31": 2.0, "n32": 2.0, "n41": 1.0}];
+        const coordenadas = {"Salar de Atacama": [-23.5, -68.3], "Subcuenca Monturaqui-Negrillar": [-24.15, -69.08], "Río Moquegua": [-17.1, -70.75], "Río Cachapoal": [-34.2, -70.4], "Río Loa": [-22.28, -68.9], "Río Limarí": [-30.8, -70.8], "Río Choapa": [-31.5, -70.6], "Salar del Hombre Muerto": [-25.33, -66.83], "Río Sonora": [30.95, -110.3], "Río Maipo": [-34.1, -70.5], "Salar de Olaroz-Cauchari": [-23.8, -66.3], "Cuenca Alta Río Copiapóga": [-27.35, -69.85], "Cuenca Rio Trombetas-Oriximiná": [-1.68, -56.4], "Cuenca Rio Jequitinhonha-Mucuri": [-17.5, -42.8], "Río Elqui": [-31.3, -70.7], "Cuenca media Rio Loa": [-22.5, -68.8], "Río Copiapó": [-27.5, -70.3], "Salar de Uyuni": [-20.3, -66.8], "Río Santa": [-9.5, -77.1], "Moa-Levisa-Mayarí": [20.65, -74.95], "Río Tambo": [-17.25, -71.8], "Salar de Maricunga": [-26.8, -69.0], "Salar de Arizaro": [-24.5, -67.2], "Río Apurímac": [-14.2, -72.25], "Cuenca Río San Juan": [-30.5, -69.5], "Río Aconcagua": [-32.8, -70.2], "Subcuenca Salar de Atacama SO": [-24.18, -69.07], "Salinas Grandes": [-23.5, -65.9], "Salar de Rincón": [-24.35, -67.05], " Subcuenca Bacadéhuachi": [29.85, -110.85], "Cuenca Rio Lerma-Chapala": [20.7, -102.75], "Río Huasco": [-28.5, -70.0], "Subcuenca Rio Itacaiúnas-Cateté": [-6.4, -50.05], "Cuenca Alto Paraopeba": [-14.95, -48.92], "Cuenca Endorreica Pampa Despoblada": [-24.0, -69.12], "Cuenca Endorreica Pampa Austera": [-23.3, -69.3], "Río Mantaro": [-11.75, -75.9], "Río Conchos": [28.2, -105.5], "Yuna-Camú": [19.1, -70.4], "Salar de Coipasa": [-19.25, -68.1], "Salar de Pastos Grandes": [-24.43, -66.83], "Subcuenca Rio São Francisco": [-17.0, -44.3], "Cuenca Rio Zamora-Santiago": [-3.85, -78.6], "Río Rapel": [-34.3, -71.0], "Río Rímac": [-11.75, -76.1], "Cuenca rio Polochic-Lago Izabal": [15.55, -89.35], "Cuenca Rio Parauapebas-Carajás": [-6.08, -50.78], "Cuenca endorreica Sierra Santa Cruz": [15.28, -88.6]};
+        const proyectosData = [{"nombre": "SQM Salar", "tipo": "Litio", "empresa": "SQM", "cuenca": "Salar de Atacama", "pais": "Chile", "coords": [-23.42, -68.25], "año": 1984, "status": "Operando", "produccion": "122,000 ton LCE/año"}, {"nombre": "Albemarle Salar", "tipo": "Litio", "empresa": "Albemarle", "cuenca": "Salar de Atacama", "pais": "Chile", "coords": [-23.58, -68.35], "año": 2015, "status": "Operando", "produccion": "121,000 ton LCE/año"}, {"nombre": "Escondida", "tipo": "Cobre", "empresa": "BHP", "cuenca": "Subcuenca Monturaqui-Negrillar", "pais": "Chile", "coords": [-24.235, -69.059], "año": 1990, "status": "Operando", "produccion": "1,000,000 ton Cu/año"}, {"nombre": "Chuquicamata", "tipo": "Cobre", "empresa": "Codelco", "cuenca": "Río Loa", "pais": "Chile", "coords": [-22.306, -68.902], "año": 1915, "status": "Operando", "produccion": "400,000 ton Cu/año"}, {"nombre": "Radomiro Tomic", "tipo": "Cobre", "empresa": "Codelco", "cuenca": "Río Loa", "pais": "Chile", "coords": [-22.445, -69.057], "año": 1997, "status": "Operando", "produccion": "215,000 ton Cu/año"}, {"nombre": "Ministro Hales", "tipo": "Cobre", "empresa": "Codelco", "cuenca": "Cuenca media Rio Loa", "pais": "Chile", "coords": [-22.518, -68.871], "año": 2014, "status": "Operando", "produccion": "190,000 ton Cu/año"}, {"nombre": "El Teniente", "tipo": "Cobre", "empresa": "Codelco", "cuenca": "Río Maipo", "pais": "Chile", "coords": [-34.098, -70.461], "año": 1905, "status": "Operando", "produccion": "455,000 ton Cu/año"}, {"nombre": "Andina", "tipo": "Cobre", "empresa": "Codelco", "cuenca": "Río Aconcagua", "pais": "Chile", "coords": [-32.865, -70.107], "año": 1970, "status": "Operando", "produccion": "217,000 ton Cu/año"}, {"nombre": "Los Pelambres", "tipo": "Cobre", "empresa": "Antofagasta Min.", "cuenca": "Río Elqui", "pais": "Chile", "coords": [-31.788, -70.489], "año": 1999, "status": "Operando", "produccion": "327,000 ton Cu/año"}, {"nombre": "Candelaria", "tipo": "Cobre", "empresa": "Lundin Mining", "cuenca": "Río Copiapó", "pais": "Chile", "coords": [-27.475, -70.203], "año": 1993, "status": "Operando", "produccion": "155,000 ton Cu/año"}, {"nombre": "Spence", "tipo": "Cobre", "empresa": "BHP", "cuenca": "Cuenca Endorreica Pampa Despoblada", "pais": "Chile", "coords": [-24.107, -69.159], "año": 2006, "status": "Operando", "produccion": "200,000 ton Cu/año"}, {"nombre": "Zaldívar", "tipo": "Cobre", "empresa": "Barrick", "cuenca": "Subcuenca Salar de Atacama SO", "pais": "Chile", "coords": [-24.176, -69.079], "año": 1995, "status": "Operando", "produccion": "140,000 ton Cu/año"}, {"nombre": "Sierra Gorda", "tipo": "Cobre", "empresa": "KGHM", "cuenca": "Cuenca Endorreica Pampa Austera", "pais": "Chile", "coords": [-23.26, -69.367], "año": 2014, "status": "Operando", "produccion": "140,000 ton Cu/año"}, {"nombre": "Fénix", "tipo": "Litio", "empresa": "Arcadium", "cuenca": "Salar del Hombre Muerto", "pais": "Argentina", "coords": [-25.333, -66.833], "año": 1997, "status": "Operando", "produccion": "22,500 ton LCE/año"}, {"nombre": "Cauchari-Olaroz", "tipo": "Litio", "empresa": "Lithium Argentina", "cuenca": "Salar de Olaroz-Cauchari", "pais": "Argentina", "coords": [-23.802, -66.301], "año": 2023, "status": "Operando", "produccion": "25,000 ton LCE/año"}, {"nombre": "Olaroz", "tipo": "Litio", "empresa": "Allkem", "cuenca": "Salar de Olaroz-Cauchari", "pais": "Argentina", "coords": [-23.654, -66.542], "año": 2014, "status": "Operando", "produccion": "17,500 ton LCE/año"}, {"nombre": "Sal de Vida", "tipo": "Litio", "empresa": "Allkem", "cuenca": "Salar de Arizaro", "pais": "Argentina", "coords": [-24.494, -67.199], "año": 2026, "status": "En construcción", "produccion": "24,000 ton proy."}, {"nombre": "Antamina", "tipo": "Cobre-Zinc", "empresa": "Glencore/BHP", "cuenca": "Río Santa", "pais": "Perú", "coords": [-9.512, -77.104], "año": 2001, "status": "Operando", "produccion": "450,000 ton/año"}, {"nombre": "Las Bambas", "tipo": "Cobre", "empresa": "MMG", "cuenca": "Río Apurímac", "pais": "Perú", "coords": [-14.197, -72.253], "año": 2016, "status": "Operando", "produccion": "310,000 ton Cu/año"}, {"nombre": "Cuajone", "tipo": "Cobre", "empresa": "Southern Copper", "cuenca": "Río Moquegua", "pais": "Perú", "coords": [-17.046, -70.738], "año": 1976, "status": "Operando", "produccion": "200,000 ton Cu/año"}, {"nombre": "Toromocho", "tipo": "Cobre", "empresa": "Chinalco", "cuenca": "Río Mantaro", "pais": "Perú", "coords": [-11.594, -76.094], "año": 2013, "status": "Operando", "produccion": "120,000 ton Cu/año"}, {"nombre": "Tía María", "tipo": "Cobre", "empresa": "Southern", "cuenca": "Río Tambo", "pais": "Perú", "coords": [-17.103, -71.91], "año": 2025, "status": "Paralizado", "produccion": "Paralizado"}, {"nombre": "Cananea", "tipo": "Cobre", "empresa": "Grupo México", "cuenca": "Río Sonora", "pais": "México", "coords": [30.951, -110.298], "año": 1899, "status": "Operando", "produccion": "200,000 ton Cu/año"}, {"nombre": "YLB Uyuni", "tipo": "Litio", "empresa": "YLB", "cuenca": "Salar de Uyuni", "pais": "Bolivia", "coords": [-20.337, -66.831], "año": 2014, "status": "Operando", "produccion": "2,000 ton LCE/año"}, {"nombre": "MRN", "tipo": "Bauxita", "empresa": "MRN", "cuenca": "Cuenca Rio Trombetas-Oriximiná", "pais": "Brasil", "coords": [-1.683, -56.397], "año": 1979, "status": "Operando", "produccion": "18 M ton/año"}, {"nombre": "Sossego", "tipo": "Cobre", "empresa": "Vale", "cuenca": "Cuenca Rio Parauapebas-Carajás", "pais": "Brasil", "coords": [-6.45, -50.062], "año": 2004, "status": "Operando", "produccion": "150,000 ton Cu/año"}, {"nombre": "Moa Nickel", "tipo": "Níquel", "empresa": "Sherritt", "cuenca": "Moa-Levisa-Mayarí", "pais": "Cuba", "coords": [20.653, -74.951], "año": 1959, "status": "Operando", "produccion": "28,672 ton Ni/año"}, {"nombre": "Mirador", "tipo": "Cobre-Oro", "empresa": "CRCC", "cuenca": "Cuenca Rio Zamora-Santiago", "pais": "Ecuador", "coords": [-3.849, -78.604], "año": 2019, "status": "Operando", "produccion": "60,000 ton Cu/año"}];
+        
+        // Inicializar mapa
+        const map = L.map('map').setView([-15, -70], 4);
+        
+        // Capas base
+        const basemaps = {
+            topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map: OpenStreetMap contributors, OpenTopoMap',
+                maxZoom: 17
+            }),
+            street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }),
+            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles © Esri',
+                maxZoom: 19
+            })
+        };
+        
+        basemaps.topo.addTo(map);
+        
+        // Cambiar capa base
+        document.querySelectorAll('input[name="basemap"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                Object.values(basemaps).forEach(layer => map.removeLayer(layer));
+                basemaps[e.target.value].addTo(map);
+            });
+        });
+        
+        // Grupos de capas
+        const cuencasLayer = L.layerGroup().addTo(map);
+        const proyectosLayer = L.layerGroup().addTo(map);
+        
+        // Toggle capas
+        document.getElementById('toggleCuencas').addEventListener('click', function() {
+            this.classList.toggle('active');
+            if (this.classList.contains('active')) {
+                cuencasLayer.addTo(map);
+            } else {
+                map.removeLayer(cuencasLayer);
+            }
+        });
+        
+        document.getElementById('toggleProyectos').addEventListener('click', function() {
+            this.classList.toggle('active');
+            if (this.classList.contains('active')) {
+                proyectosLayer.addTo(map);
+            } else {
+                map.removeLayer(proyectosLayer);
+            }
+        });
+        
+        // Funciones de color
+        function getColor(score) {
+            return score >= 2.5 ? '#e74c3c' :
+                   score >= 2.0 ? '#f39c12' :
+                   score >= 1.5 ? '#f1c40f' : '#27ae60';
+        }
+        
+        function getStatusColor(status) {
+            switch(status) {
+                case 'Operando': return '#2ecc71';
+                case 'En construcción': return '#f39c12';
+                case 'Paralizado': return '#e74c3c';
+                case 'Cerrado': return '#95a5a6';
+                default: return '#95a5a6';
+            }
+        }
+        
+        function getScoreClass(score) {
+            return score >= 2.5 ? 'high' :
+                   score >= 2.0 ? 'medium' : 'low';
+        }
+        
+        function getRankClass(rank) {
+            return rank <= 3 ? 'top3' :
+                   rank <= 10 ? 'top10' : 'others';
+        }
+        
+        // Variables globales para charts
+        let currentRadarChart = null;
+        let currentVariablesChart = null;
+        let isPlaying = false;
+        let playInterval = null;
+        
+        // Agregar cuencas
+        cuencasData.forEach(cuenca => {
+            const coords = coordenadas[cuenca.cuenca];
+            if (!coords) return;
+            
+            const marker = L.circleMarker(coords, {
+                radius: 7 + (cuenca.rank <= 10 ? 3 : 0),
+                fillColor: getColor(cuenca.score_final),
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            });
+            
+            marker.bindPopup(`
+                <b>${cuenca.cuenca}</b><br>
+                ${cuenca.pais} - ${cuenca.mineral}<br>
+                Score: ${cuenca.score_final.toFixed(2)} | Rank #${cuenca.rank}<br>
+                <small><i>Click para detalles</i></small>
+            `);
+            
+            marker.on('click', () => showCuencaInfo(cuenca));
+            marker.addTo(cuencasLayer);
+        });
+        
+        // Agregar proyectos
+        let proyectosMarkers = [];
+        proyectosData.forEach(proyecto => {
+            const marker = L.marker(proyecto.coords, {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="
+                        width: 12px; 
+                        height: 12px; 
+                        background: ${getStatusColor(proyecto.status)}; 
+                        border: 2px solid #34495e;
+                        transform: rotate(45deg);
+                    "></div>`,
+                    iconSize: [12, 12],
+                    iconAnchor: [6, 6]
+                })
+            });
+            
+            marker.bindPopup(`
+                <b>${proyecto.nombre}</b><br>
+                ${proyecto.empresa} (${proyecto.año})<br>
+                ${proyecto.tipo} - ${proyecto.status}<br>
+                Producción: ${proyecto.produccion}
+            `);
+            
+            marker.projectYear = proyecto.año;
+            marker.addTo(proyectosLayer);
+            proyectosMarkers.push(marker);
+        });
+        
+        // Timeline
+        const slider = document.getElementById('timelineSlider');
+        const yearDisplay = document.getElementById('yearDisplay');
+        
+        function updateTimeline(year) {
+            yearDisplay.textContent = year;
+            proyectosMarkers.forEach(marker => {
+                if (marker.projectYear <= year) {
+                    marker.setOpacity(1);
+                } else {
+                    marker.setOpacity(0.2);
+                }
+            });
+        }
+        
+        slider.addEventListener('input', (e) => {
+            updateTimeline(parseInt(e.target.value));
+        });
+        
+        function togglePlay() {
+            const btn = document.getElementById('playPauseBtn');
+            if (isPlaying) {
+                clearInterval(playInterval);
+                btn.textContent = '▶ Play';
+                isPlaying = false;
+            } else {
+                btn.textContent = '⏸ Pause';
+                isPlaying = true;
+                playInterval = setInterval(() => {
+                    let currentYear = parseInt(slider.value);
+                    if (currentYear >= 2026) {
+                        currentYear = 1899;
+                    } else {
+                        currentYear += 1;
+                    }
+                    slider.value = currentYear;
+                    updateTimeline(currentYear);
+                }, 300);
+            }
+        }
+        
+        // Mostrar info de cuenca
+        function showCuencaInfo(cuenca) {
+            const panel = document.getElementById('infoPanel');
+            const content = document.getElementById('panelContent');
+            
+            if (currentRadarChart) currentRadarChart.destroy();
+            if (currentVariablesChart) currentVariablesChart.destroy();
+            
+            content.innerHTML = `
+                <h3>
+                    ${cuenca.cuenca}
+                    <span class="rank-badge ${getRankClass(cuenca.rank)}">RANK #${cuenca.rank}</span>
+                </h3>
+                
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab(event, 'info')">Info</button>
+                    <button class="tab" onclick="switchTab(event, 'scores')">Scores</button>
+                    <button class="tab" onclick="switchTab(event, 'charts')">Gráficos</button>
+                </div>
+                
+                <div id="info" class="tab-content active">
+                    <div class="data-row">
+                        <div class="data-label">País</div>
+                        <div class="data-value">${cuenca.pais}</div>
+                    </div>
+                    <div class="data-row">
+                        <div class="data-label">Región</div>
+                        <div class="data-value">${cuenca.region}</div>
+                    </div>
+                    <div class="data-row">
+                        <div class="data-label">Mineral</div>
+                        <div class="data-value">${cuenca.mineral}</div>
+                    </div>
+                    <div class="data-row">
+                        <div class="data-label">Operaciones</div>
+                        <div class="data-value">${cuenca.operaciones}</div>
+                    </div>
+                    <div class="data-row">
+                        <div class="data-label">Producción</div>
+                        <div class="data-value">${cuenca.produccion}</div>
+                    </div>
+                    <div class="data-row">
+                        <div class="data-label">BWS</div>
+                        <div class="data-value">${cuenca.bws}</div>
+                    </div>
+                    <div class="data-row">
+                        <div class="data-label">Población</div>
+                        <div class="data-value">${cuenca.poblacion}</div>
+                    </div>
+                </div>
+                
+                <div id="scores" class="tab-content">
+                    <div class="score-container">
+                        <div class="score-row">
+                            <span class="score-label">Score Final:</span>
+                            <span class="score-value ${getScoreClass(cuenca.score_final)}">${cuenca.score_final.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    <div class="score-container">
+                        <h4>Dimensiones</h4>
+                        <div class="score-row">
+                            <span class="score-label">D1 - Impacto Minero:</span>
+                            <span class="score-value ${getScoreClass(cuenca.d1_score)}">${cuenca.d1_score.toFixed(2)}</span>
+                        </div>
+                        <div class="score-row">
+                            <span class="score-label">D2 - Criticidad Hídrica:</span>
+                            <span class="score-value ${getScoreClass(cuenca.d2_score)}">${cuenca.d2_score.toFixed(2)}</span>
+                        </div>
+                        <div class="score-row">
+                            <span class="score-label">D3 - Vulnerabilidad Social:</span>
+                            <span class="score-value ${getScoreClass(cuenca.d3_score)}">${cuenca.d3_score.toFixed(2)}</span>
+                        </div>
+                        <div class="score-row">
+                            <span class="score-label">D4 - Viabilidad Técnica:</span>
+                            <span class="score-value ${getScoreClass(cuenca.d4_score)}">${cuenca.d4_score.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="charts" class="tab-content">
+                    <h4>Dimensiones</h4>
+                    <div class="chart-container">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                    <h4>Variables</h4>
+                    <div class="chart-container">
+                        <canvas id="variablesChart"></canvas>
+                    </div>
+                </div>
+            `;
+            
+            panel.classList.add('active');
+            window.currentCuenca = cuenca;
+        }
+        
+        function createRadarChart(cuenca) {
+            const ctx = document.getElementById('radarChart');
+            if (!ctx) return;
+            if (currentRadarChart) currentRadarChart.destroy();
+            
+            currentRadarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['D1:\nImpacto', 'D2:\nCriticidad', 'D3:\nVulnera.', 'D4:\nViabilidad'],
+                    datasets: [{
+                        data: [cuenca.d1_score, cuenca.d2_score, cuenca.d3_score, cuenca.d4_score],
+                        fill: true,
+                        backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                        borderColor: 'rgb(52, 152, 219)',
+                        pointBackgroundColor: 'rgb(52, 152, 219)',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    scales: { r: { suggestedMin: 0, suggestedMax: 3, ticks: { stepSize: 0.5 }}},
+                    plugins: { legend: { display: false }}
+                }
+            });
+        }
+        
+        function createVariablesChart(cuenca) {
+            const ctx = document.getElementById('variablesChart');
+            if (!ctx) return;
+            if (currentVariablesChart) currentVariablesChart.destroy();
+            
+            currentVariablesChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Prod%', 'Res%', 'BWS', 'AP', 'Usos', 'Pob', 'Com', 'Info'],
+                    datasets: [{
+                        data: [cuenca.n11, cuenca.n12, cuenca.n21, cuenca.n22, cuenca.n23, cuenca.n31, cuenca.n32, cuenca.n41],
+                        fill: true,
+                        backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                        borderColor: 'rgb(231, 76, 60)',
+                        pointBackgroundColor: 'rgb(231, 76, 60)',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    scales: { r: { suggestedMin: 0, suggestedMax: 3, ticks: { stepSize: 1 }}},
+                    plugins: { legend: { display: false }}
+                }
+            });
+        }
+        
+        function closePanel() {
+            document.getElementById('infoPanel').classList.remove('active');
+        }
+        
+        function switchTab(event, tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            if (tabName === 'charts' && window.currentCuenca) {
+                setTimeout(() => {
+                    createRadarChart(window.currentCuenca);
+                    createVariablesChart(window.currentCuenca);
+                }, 50);
+            }
+        }
+        
+        // Búsqueda
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            if (term.length < 2) return;
+            
+            const foundCuenca = cuencasData.find(c => c.cuenca.toLowerCase().includes(term));
+            if (foundCuenca) {
+                const coords = coordenadas[foundCuenca.cuenca];
+                if (coords) {
+                    map.setView(coords, 8);
+                    showCuencaInfo(foundCuenca);
+                }
+            }
+        });
+        
+        // Inicializar
+        updateTimeline(2025);
+        console.log(`✅ ${cuencasData.length} cuencas y ${proyectosData.length} proyectos cargados`);
+    </script>
+</body>
+</html>
