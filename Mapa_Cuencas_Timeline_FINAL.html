@@ -1,0 +1,2530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuencas Mineras Latinoamérica - 47 Cuencas</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        .timeline-control { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); z-index: 1000; width: 600px; }
+        .timeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .year-display { font-size: 24px; font-weight: bold; color: #2c3e50; }
+        .play-pause-btn { background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
+        .play-pause-btn:hover { background: #2980b9; }
+        .timeline-slider { width: 100%; height: 8px; border-radius: 4px; background: #ecf0f1; outline: none; -webkit-appearance: none; }
+        .timeline-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #3498db; cursor: pointer; }
+        .timeline-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #3498db; cursor: pointer; border: none; }
+        .layer-control { position: absolute; top: 10px; left: 10px; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; }
+        .layer-control h4 { margin: 0 0 8px 0; font-size: 13px; color: #2c3e50; }
+        .layer-option { margin: 5px 0; font-size: 12px; }
+        .layer-option label { cursor: pointer; display: flex; align-items: center; }
+        .layer-option input { margin-right: 6px; }
+        .toggle-layers { display: flex; gap: 8px; margin-top: 10px; }
+        .toggle-btn { padding: 6px 12px; background: #ecf0f1; border: 1px solid #bdc3c7; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.3s; }
+        .toggle-btn.active { background: #3498db; color: white; border-color: #3498db; }
+        .info-panel { position: absolute; top: 10px; right: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; max-height: 90vh; overflow-y: auto; z-index: 1000; display: none; }
+        .info-panel.active { display: block; }
+        .info-panel h3 { margin: 0 0 10px 0; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; font-size: 15px; }
+        .info-panel .close-btn { float: right; cursor: pointer; font-size: 20px; color: #e74c3c; font-weight: bold; }
+        .rank-badge { display: inline-block; background: #8e44ad; color: white; padding: 3px 8px; border-radius: 10px; font-weight: bold; font-size: 11px; margin-left: 6px; }
+        .rank-badge.top3 { background: #8e44ad; }
+        .rank-badge.top10 { background: #e74c3c; }
+        .rank-badge.others { background: #95a5a6; }
+        .info-section { margin: 12px 0; }
+        .section-title { font-size: 13px; font-weight: bold; color: #2c3e50; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .info-item { margin: 6px 0; }
+        .info-label { font-weight: 600; color: #34495e; font-size: 10px; text-transform: uppercase; margin-bottom: 2px; }
+        .info-value { color: #2c3e50; font-size: 12px; line-height: 1.4; }
+        .score-row { display: flex; justify-content: space-between; margin: 4px 0; padding: 3px 0; font-size: 13px; }
+        .score-label { font-weight: 600; color: #34495e; }
+        .score-value { font-weight: bold; padding: 2px 8px; border-radius: 3px; background: white; }
+        .score-value.high { color: #8e44ad; }
+        .score-value.medium { color: #e74c3c; }
+        .score-value.low { color: #27ae60; }
+        .chart-container { margin: 15px 0; position: relative; height: 220px; }
+        .legend { position: absolute; bottom: 130px; left: 10px; background: white; padding: 12px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; }
+        .legend-title { font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 12px; }
+        .legend-item { margin: 4px 0; display: flex; align-items: center; font-size: 11px; }
+        .legend-color { width: 16px; height: 16px; border-radius: 50%; margin-right: 7px; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.3); }
+        .legend-square { width: 14px; height: 14px; margin-right: 7px; border: 2px solid #34495e; }
+        .search-box { position: absolute; top: 10px; left: 180px; z-index: 1000; }
+        .search-box input { padding: 10px; border: none; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 280px; font-size: 14px; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 10px; }
+        .tab { padding: 7px 12px; background: #ecf0f1; border: none; border-radius: 5px; cursor: pointer; font-size: 11px; transition: all 0.3s; flex: 1; }
+        .tab.active { background: #3498db; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .update-badge { position: absolute; top: 10px; right: 10px; background: #27ae60; color: white; padding: 5px 10px; border-radius: 5px; font-size: 11px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 999; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="update-badge">✓ 47 CUENCAS - ACTIVIDADES CORREGIDAS</div>
+    <div class="layer-control">
+        <h4>🗺️ Capas del Mapa</h4>
+        <div class="layer-option"><label><input type="radio" name="basemap" value="topo" checked> Topográfico</label></div>
+        <div class="layer-option"><label><input type="radio" name="basemap" value="street"> Calles</label></div>
+        <div class="layer-option"><label><input type="radio" name="basemap" value="satellite"> Satélite</label></div>
+        <h4 style="margin-top: 15px;">📍 Mostrar</h4>
+        <div class="toggle-layers">
+            <button class="toggle-btn active" id="toggleCuencas">Cuencas</button>
+            <button class="toggle-btn active" id="toggleProyectos">Proyectos</button>
+        </div>
+    </div>
+    <div class="search-box"><input type="text" id="searchInput" placeholder="Buscar cuenca o proyecto..."></div>
+    <div class="info-panel" id="infoPanel">
+        <span class="close-btn" onclick="closePanel()">&times;</span>
+        <div id="panelContent"></div>
+    </div>
+    <div class="legend">
+        <div class="legend-title">Cuencas (Score)</div>
+        <div class="legend-item"><div class="legend-color" style="background: #8e44ad;"></div><span>Crítica (≥2.5)</span></div>
+        <div class="legend-item"><div class="legend-color" style="background: #e74c3c;"></div><span>Alta (2.0-2.5)</span></div>
+        <div class="legend-item"><div class="legend-color" style="background: #f1c40f;"></div><span>Media (1.5-2.0)</span></div>
+        <div class="legend-item"><div class="legend-color" style="background: #27ae60;"></div><span>Baja (<1.5)</span></div>
+        <div class="legend-title" style="margin-top: 12px;">Proyectos</div>
+        <div class="legend-item"><div class="legend-square" style="background: #2ecc71; border-color: #27ae60;"></div><span>Operando</span></div>
+        <div class="legend-item"><div class="legend-square" style="background: #f39c12; border-color: #e67e22;"></div><span>Construcción</span></div>
+        <div class="legend-item"><div class="legend-square" style="background: #e74c3c; border-color: #c0392b;"></div><span>Paralizado</span></div>
+    </div>
+    <div class="timeline-control">
+        <div class="timeline-header">
+            <span class="year-display" id="yearDisplay">2025</span>
+            <button class="play-pause-btn" id="playPauseBtn" onclick="togglePlay()">▶ Play</button>
+        </div>
+        <input type="range" min="1899" max="2026" value="2025" class="timeline-slider" id="timelineSlider">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #7f8c8d; margin-top: 5px;">
+            <span>1899</span><span>2026</span>
+        </div>
+    </div>
+    <script>
+
+        const cuencasData = [
+  {
+    "cuenca": "Salar de Atacama",
+    "pais": "Chile",
+    "mineral": "Litio",
+    "rank": 1,
+    "score_final": 2.75,
+    "d1_score": 3.0,
+    "d2_score": 3.0,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 3.0,
+    "n12": 3.0,
+    "n21": 3.0,
+    "n22": 3.0,
+    "n23": 3.0,
+    "n31": 2.0,
+    "n32": 2.0,
+    "n41": 2.0,
+    "region": "Antofagasta, San Pedro Atacama",
+    "empresas": "SQM, Albemarle",
+    "produccion": "243,000 LCE (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~30% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "9.2 Li (USGS 2024; SQM Annual Report 2024; Albemarle Reserves 2024)",
+    "reservas_pct": "~37% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "15-20 mm/año (agencias meteorológicas nacionales)",
+    "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Extremely High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD: RN Los Flamencos 740km²; Ramsar Soncor/Tara/Pujsa; lagunas Miscanti-Miñiques [Fuentes: WDPA 2024 www.protectedplanet.net; Ramsar Sites 2024 rsis.ramsar.org]",
+    "actividades": "3 actividades: (1) Agricultura; (2) Ganadería; (3) Turismo... · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Ganadería: censos ganaderos + Google Earth 2024; Turismo: estadísticas oficiales turismo (SERNATUR/MINCETUR/SECTUR)]",
+    "poblacion": "~11k Comuna SPA; 18 comunidades; SPA 6k, Toconao 800, Peine 600, Socaire 350 [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Lickanantay; CPA 18 comunidades ~5-6k; ADI Atacama Grande; Kunza revitalización; conflictos litio-agua; demandas judiciales [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: >5 estaciones >40años (San Pedro Cuchabrache, Vilama); SQM/Albemarle ~50 pozos privados; Estudio geofísico DGA 2015; Estado: BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "EIA SQM/Albemarle SEA Chile; DGA hidrogeología completa; Balance hídrico; >50 papers académicos; CPA monitoreo independiente 2019 [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Subcuenca Monturaqui-Negrillar",
+    "pais": "Chile",
+    "mineral": "Cobre+Mo",
+    "rank": 2,
+    "score_final": 2.4999999999999996,
+    "d1_score": 3.0,
+    "d2_score": 2.5,
+    "d3_score": 1.5,
+    "d4_score": 2.0,
+    "n11": 3.0,
+    "n12": 3.0,
+    "n21": 3.0,
+    "n22": 2.0,
+    "n23": 1.0,
+    "n31": 1.0,
+    "n32": 2.0,
+    "n41": 2.0,
+    "region": "Antofagasta, Sierra Gorda",
+    "empresas": "Escondida (BHP)",
+    "produccion": "~1,000,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~4.5% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "25.0 Cu (USGS 2024; BHP Ore Reserves 2024)",
+    "reservas_pct": "~3.0% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "15-20 mm/año (agencias meteorológicas nacionales)",
+    "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Extremely High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD: Cuenca Salar Atacama; comparte Ramsar; ecosistemas protegidos [Fuente: Ramsar Sites Information Service 2024 rsis.ramsar.org]",
+    "actividades": "0 actividades: Compet: agua vs litio vs comunidades Peine; minería mayor consumidor [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "~3,000 área influencia; Peine principal afectado; Sierra Gorda 1,500 [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Lickanantay Peine; demandas judiciales conjuntas vs Escondida/Zaldívar/Albemarle; sobreexplotación acuíferos denunciada [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "BHP monitoreo privado extenso; DGA regional; red compartida Salar Atacama; Estado: BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "BHP Annual Report 2024; EIA Escondida SEA Chile; DGA estudios; Cochilco; Acceso: MEDIO-ALTO [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Moquegua",
+    "pais": "Perú",
+    "mineral": "Cobre",
+    "rank": 3,
+    "score_final": 2.4000049999999997,
+    "d1_score": 2.7143,
+    "d2_score": 2.25,
+    "d3_score": 2.5,
+    "d4_score": 2.0,
+    "n11": 3.0,
+    "n12": 2.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 2.0,
+    "n41": 2.0,
+    "region": "Moquegua-Tacna",
+    "empresas": "Cuajone, Toquepala (Southern); Quellaveco (Anglo American)",
+    "produccion": "750,000 ton Cu (USGS 2024; Southern Copper 2024; Anglo American 2024)",
+    "prod_pct": "~3.4% (USGS 2024; Southern Copper 2024; Anglo American 2024)",
+    "reservas": "16.2 Mt Cu (USGS 2024; Southern Copper Reserves 2024; Anglo American Reserves 2024)",
+    "reservas_pct": "~1.8% (USGS 2024; Southern Copper Reserves 2024; Anglo American Reserves 2024)",
+    "precipitacion": "50-150 mm/año (agencias meteorológicas nacionales)",
+    "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Extremely High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP grandes; vertiente Pacífico árida extrema <100mm/año; glaciares retroceso [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Agri: valle Moquegua productivo paltas/vid exportación; conflictos Tambo 2015-20 [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "Valle Moquegua ~80k (población prioritaria para clasificación); Tacna ~330k aguas abajo (dependencia parcial, no contada para nivel)",
+    "comunidades": "Mestiza; comunidades campesinas valle; sin TI formal pero identidad andina fuerte [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "ANA: ~5 estaciones; Southern monitoreo privado extenso; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Southern Copper 2023; ANA Perú; Defensoría; Tía María EIA rechazado; Acceso: MEDIO-ALTO [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Salar del Hombre Muerto",
+    "pais": "Argentina",
+    "mineral": "Litio",
+    "rank": 4,
+    "score_final": 2.25,
+    "d1_score": 3.0,
+    "d2_score": 2.375,
+    "d3_score": 1.0,
+    "d4_score": 1.0,
+    "n11": 3.0,
+    "n12": 3.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 2.0,
+    "n31": 1.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Salta- Catamarca, departamento de Antofagasta de la Sierra",
+    "empresas": "Livent",
+    "produccion": "22,500 LCE (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~3% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "3.0 Li (USGS 2024; Livent/Arcadium Reserves 2024)",
+    "reservas_pct": "~11% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "100-200 mm/año (agencias meteorológicas nacionales)",
+    "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP grandes; puna catamarcana; ecosistemas altoandinos únicos bofedales [Verificado: WDPA 2024]",
+    "actividades": "2 actividades: (1) Agricultura; (2) Ganadería; Ganad: camélidos extensiva; sin agricultura altitud; compete · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Ganadería: censos ganaderos + Google Earth 2024]",
+    "poblacion": "Antofagasta Sierra ~1,200; comunidades dispersas puna ~3,000 región [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Atacama argentinas; pastores puna; negociaciones regalías Livent desde 1997; acuerdos parciales comunidades [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "Catamarca monitoreo limitado provincial; Livent monitoreo privado; Estado: BAJO-MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Livent Annual 2023; Argentina Mining Secretariat [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuenca Río Loa",
+    "pais": "Chile",
+    "mineral": "Cobre+Mo",
+    "rank": 5,
+    "score_final": 2.1999999999999997,
+    "d1_score": 2.0,
+    "d2_score": 2.375,
+    "d3_score": 2.5,
+    "d4_score": 2.0,
+    "n11": 2.0,
+    "n12": 2.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 2.0,
+    "n31": 3.0,
+    "n32": 2.0,
+    "n41": 2.0,
+    "region": "Antofagasta, Calama",
+    "empresas": "Chuquicamata, Radomiro Tomic (Codelco)",
+    "produccion": "615,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~2.8% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "12.5 Cu (USGS 2024; Codelco Recursos y Reservas 2024)",
+    "reservas_pct": "~1.5% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "5-15 mm/año (agencias meteorológicas nacionales)",
+    "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Extremely High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Río más largo Chile (440km); sin AP grandes; desierto Atacama [Verificado: WDPA 2024]",
+    "actividades": "2 actividades: (1) Agricultura; (2) Agua potable/urbano; Agri: oasis Calama limitada; Compet: EXTREMA minería vs comu · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Agua potable: censos + empresas sanitarias]",
+    "poblacion": "Calama ~170k; comunidades Quillagua, Lasana, Chiu-Chiu; ~200k cuenca total [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Atacameño/Quechua; Quillagua, Lasana demandas históricas vs Codelco; sobreexplotación crítica acuíferos; Loa caudal ecológico 0 tramos [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: >10 estaciones >50años; mejor red Loa; Codelco monitoreo extenso privado; Estado: BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Codelco Memoria Anual 2023; DGA estudios río Loa; Cochilco; Acuíferos Loa 2020 [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Sonora",
+    "pais": "México",
+    "mineral": "Cobre",
+    "rank": 6,
+    "score_final": 2.199995,
+    "d1_score": 2.2857000000000003,
+    "d2_score": 2.25,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 2.0,
+    "n12": 3.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 2.0,
+    "n32": 2.0,
+    "n41": 2.0,
+    "region": "Sonora, Cananea",
+    "empresas": "Grupo México (Cananea, Buenavista)",
+    "produccion": "~450,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~2.0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "35.0 Cu (USGS 2024; reportes técnicos operadores cobre)",
+    "reservas_pct": "~4.0% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "300-500 mm/año (agencias meteorológicas nacionales)",
+    "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP federales grandes; conecta Biosfera Pinacate aguas abajo; bosques ribereños sin protección formal; cabecera [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Agri: 15-20k ha trigo/nogales intensivos; Compet: ALTA minería vs agricultura (n [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "40-50k cuenca; derrame 2014: 24k afectados CNDH; Cananea 32k minero; pueblos Arizpe, Banámichi [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Ópata histórico extinto culturalmente; mestiza actual; sin TI demarcados; Yaqui cercano cuencas adyacentes; agricultores tradicionales [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "CONAGUA: ~5-8 fluviométricas; post-derrame 2014 COFEPRIS intensificó 15 puntos temporales (2014-2017); Grupo México privado; Estado: MODERADO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "SEMARNAT Informe derrame 2014; CNDH Recomendación 009/2015; Fideicomiso Río Sonora; UNISON estudios contaminación; CONAGUA balance hídrico [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Maipo",
+    "pais": "Chile",
+    "mineral": "Cobre+Mo",
+    "rank": 7,
+    "score_final": 2.1,
+    "d1_score": 2.0,
+    "d2_score": 2.125,
+    "d3_score": 2.5,
+    "d4_score": 2.0,
+    "n11": 2.0,
+    "n12": 2.0,
+    "n21": 2.0,
+    "n22": 3.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 2.0,
+    "n41": 2.0,
+    "region": "RM Santiago, Cajón Maipo",
+    "empresas": "El Teniente (Codelco)",
+    "produccion": "455,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~2.1% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "8.6 Cu (USGS 2024; Codelco Recursos y Reservas 2024)",
+    "reservas_pct": "~1.0% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "450-800 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "RN Río Clarillo pequeña; glaciar El Morado retroceso; sin grandes AP alta [Fuente: WDPA 2024 - World Database on Protected Areas www.protectedplanet.net]",
+    "actividades": "1 actividad: Hidroeléctricas; Abastece 80% agua Santiago 7M hab; Hidroeléctrica Alto Maipo conflicto permanent [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "Santiago 7M depende cuenca; Cajón Maipo ~15k residentes; Alto Maipo protestas continuas [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sin indígenas; urbana-rural; grupos ambientalistas fuertes; rechazo Alto Maipo masivo [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: >15 estaciones >70años; mejor monitoreada Chile; Estado: EXCELENTE [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Codelco 2023; DGA Chile; Alto Maipo EIA [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Salar de Olaroz-Cauchari",
+    "pais": "Argentina",
+    "mineral": "Litio",
+    "rank": 8,
+    "score_final": 1.9999949999999997,
+    "d1_score": 2.2857000000000003,
+    "d2_score": 2.25,
+    "d3_score": 1.5,
+    "d4_score": 1.0,
+    "n11": 2.0,
+    "n12": 3.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 1.0,
+    "n32": 2.0,
+    "n41": 1.0,
+    "region": "Jujuy, Susques",
+    "empresas": "Allkem",
+    "produccion": "19,000 LCE (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~2.5% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "3.9 Li (USGS 2024; reportes operadores litio)",
+    "reservas_pct": "~14% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "100-150 mm/año (agencias meteorológicas nacionales)",
+    "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD <10km: Proximidad PN Los Cardones; sin AP directa salar [Fuente: WDPA 2024 - World Database on Protected Areas www.protectedplanet.net]",
+    "actividades": "1 actividad: Ganadería; Ganad: camélidos; competencia agua dulce DLE vs comunidades Susques; expansión 4 [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "Susques ~2,500; comunidades dispersas ~5,000 región [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Kolla/Atacama; Susques negociaciones; conflictos DLE consumo agua dulce río Pastos Chicos; protestas 2023 [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "Jujuy monitoreo limitado; Allkem privado; Estado: BAJO-MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Allkem Annual 2023; Argentina Mining; Prensa conflictos [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Limarí",
+    "pais": "Chile",
+    "mineral": "Cobre",
+    "rank": 9,
+    "score_final": 1.949995,
+    "d1_score": 2.2857000000000003,
+    "d2_score": 1.625,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 2.0,
+    "n12": 3.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "Coquimbo, Ovalle",
+    "empresas": "Los Pelambres",
+    "produccion": "430,000 t Cu (Minera Los Pelambres 2023; Antofagasta Minerals Annual Report 2023)",
+    "prod_pct": "~1.8% (Chile 5.3M t = 24% global; Limarí ~430k t)",
+    "reservas": "3.5M t Cu contenido (Minera Los Pelambres; Antofagasta Minerals Reserves 2023)",
+    "reservas_pct": "~0.4% (Reservas globales Cu ~880M t; USGS 2024)",
+    "precipitacion": "200-300 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Embalse Recoleta; sin AP grandes; zona agrícola intensiva Norte Chico [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Agri: INTENSÍSIMA uva mesa exportación, paltas; Compet: EXTREMA déficit crónico; [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "~150k cuenca; Ovalle ~120k; agricultura familiar + empresarial [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Diaguita; competencia agua permanente; sequía 2019-2024 [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: >8 estaciones; Estado: BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "DGA Chile 2023; Cochilco [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Choapa",
+    "pais": "Chile",
+    "mineral": "Cobre+Oro",
+    "rank": 10,
+    "score_final": 1.949995,
+    "d1_score": 2.2857000000000003,
+    "d2_score": 1.625,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 2.0,
+    "n12": 3.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "Coquimbo, Illapel",
+    "empresas": "Los Pelambres parte",
+    "produccion": "240,000 t Cu (División Andina + proyectos menores 2023; Codelco Annual Report 2023)",
+    "prod_pct": "~1.0% (Chile 5.3M t = 24% global; Choapa ~240k t)",
+    "reservas": "2.1M t Cu contenido (División Andina; Codelco Reserves 2023)",
+    "reservas_pct": "~0.24% (Reservas globales Cu ~880M t; USGS 2024)",
+    "precipitacion": "150-250 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP grandes; cuenca Los Pelambres [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Agri: productiva; minería artesanal oro histórica; sequía severa 2019-2023 [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "~80k cuenca; Illapel ~35k, Salamanca ~28k [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Mestiza; mineros artesanales tradicionales; agricultores [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: ~6 estaciones; Estado: MEDIO-BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "DGA Chile 2023 [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuenca Alta Río Copiapó",
+    "pais": "Chile",
+    "mineral": "Litio",
+    "rank": 11,
+    "score_final": 1.9499900000000001,
+    "d1_score": 1.5714000000000001,
+    "d2_score": 2.25,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 1.0,
+    "n12": 3.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "Atacama, Tierra Amarilla",
+    "empresas": "SCL (SQM-Codelco JV)",
+    "produccion": "Proyectado (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "N/D",
+    "reservas": "1.0 Li (USGS 2024; SQM Annual Report 2024; Albemarle Reserves 2024)",
+    "reservas_pct": "~4% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "12-25 mm/año (agencias meteorológicas nacionales)",
+    "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Extremely High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Glaciares zona alta; sin protección formal AP [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Competencia con Candelaria cobre existente; conflicto agua intensifica; agricult [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "Misma población valle Copiapó; conflicto proyectado adicional litio [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Agricultores organizados oposición; temor agotamiento definitivo recursos hídricos [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA red existente Copiapó; proyecto sin operación; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "SQM Corporate 2024; DGA Chile; Cochilco [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Cachapoal",
+    "pais": "Chile",
+    "mineral": "Cobre",
+    "rank": 12,
+    "score_final": 1.9,
+    "d1_score": 2.0,
+    "d2_score": 1.75,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 2.0,
+    "n12": 2.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 2.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "O'Higgins, Rancagua",
+    "empresas": "El Teniente",
+    "produccion": "465,000 t Cu (División El Teniente 2023; Codelco Annual Report 2023)",
+    "prod_pct": "~2.0% (Chile 5.3M t = 24% global; El Teniente ~465k t)",
+    "reservas": "6.8M t Cu contenido (División El Teniente; Codelco Reserves 2023; mina subterránea más grande del mundo)",
+    "reservas_pct": "~0.77% (Reservas globales Cu ~880M t; USGS 2024)",
+    "precipitacion": "700-1,200 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "RN Río Los Cipreses; cordillera O'Higgins [Fuente: WDPA 2024 - World Database on Protected Areas www.protectedplanet.net]",
+    "actividades": "2 actividades: (1) Agricultura; (2) Agua potable/urbano; Agri: frutícola intensiva exportación; agua potable Rancagua · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Agua potable: censos + empresas sanitarias]",
+    "poblacion": "Rancagua ~250k; cuenca ~400k; agricultura exportación [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sin indígenas; agricultores tradicionales frutícolas [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: >10 estaciones; Estado: BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Codelco 2023; DGA Chile [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuenca Río Trombetas (Oriximiná)",
+    "pais": "Brasil",
+    "mineral": "Bauxita (Aluminio)",
+    "rank": 13,
+    "score_final": 1.8999999999999997,
+    "d1_score": 3.0,
+    "d2_score": 1.25,
+    "d3_score": 2.0,
+    "d4_score": 1.0,
+    "n11": 3.0,
+    "n12": 3.0,
+    "n21": 1.0,
+    "n22": 2.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Pará, Oriximiná",
+    "empresas": "MRN",
+    "produccion": "~18M ton bauxita (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~5% bauxita (USGS Mineral Commodity Summaries 2024)",
+    "reservas": ">500M ton (USGS 2024; reportes técnicos operadores)",
+    "reservas_pct": "Masivas (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "2,000-2,500 mm/año (agencias meteorológicas nacionales)",
+    "bws": "10-20% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Low (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD: FLONA Saracá-Taquera; TI múltiples (Nhamundá-Mapuera, Trombetas-Mapuera); Reserva Biológica Trombetas; UNESCO Biosphere candidata [Fuente: WDPA 2024 - World Database on Protected Areas www.protectedplanet.net]",
+    "actividades": "0 actividades: Mineração bauxita desde 1979; floresta Amazônica; MRN operação dentro/proximidade TI; reabilitação áreas mineradas [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "~60k região; Oriximiná ~70k; TI ~5,000 indígenas múltiplos povos [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Povos: Wai-Wai, Hixkaryana, Katuenayana, Kahyana, outros; TI demarcadas; MRN compensações; conflitos históricos anos 70-80; atualmente negociações estáveis [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "ANA: limitado Amazônia; MRN monitoreo privado operação; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "MRN Sustainability Reports; FUNAI; ICMBio FLONA [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Elqui",
+    "pais": "Chile",
+    "mineral": "Cobre+Mo",
+    "rank": 14,
+    "score_final": 1.8500050000000001,
+    "d1_score": 1.7143000000000002,
+    "d2_score": 1.75,
+    "d3_score": 2.5,
+    "d4_score": 2.0,
+    "n11": 2.0,
+    "n12": 1.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 2.0,
+    "n31": 3.0,
+    "n32": 2.0,
+    "n41": 2.0,
+    "region": "Coquimbo, La Serena",
+    "empresas": "Los Pelambres (Antofagasta Minerals)",
+    "produccion": "327,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~1.5% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "6.1 Cu (USGS 2024; reportes técnicos operadores cobre)",
+    "reservas_pct": "~0.7% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "75-120 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP grandes; embalse Puclaro; zona transición valle pisco [Verificado: WDPA 2024]",
+    "actividades": "2 actividades: (1) Agricultura; (2) Turismo; Agri: INTENSA uva pisco/mesa; Turismo: valle Elqui icónico; · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Turismo: estadísticas oficiales turismo (SERNATUR/MINCETUR/SECTUR)]",
+    "poblacion": "Valle Elqui ~200k; La Serena ~220k aguas abajo; región turística [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Diaguita; conflictos comunidades vs Los Pelambres; tranque relaves El Mauro mayor Sudamérica críticas [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: >10 estaciones >40años; Estado: BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Antofagasta Minerals Sustainability 2023; DGA Chile; El Mauro EIA [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuenca Río Jequitinhonha-Mucuri",
+    "pais": "Brasil",
+    "mineral": "Litio+Grafito+TR",
+    "rank": 15,
+    "score_final": 1.8499900000000002,
+    "d1_score": 1.5714000000000001,
+    "d2_score": 2.125,
+    "d3_score": 1.5,
+    "d4_score": 2.0,
+    "n11": 1.0,
+    "n12": 3.0,
+    "n21": 2.0,
+    "n22": 2.0,
+    "n23": 3.0,
+    "n31": 2.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "Minas Gerais NE",
+    "empresas": "Sigma Lithium, CBL, AMG",
+    "produccion": "~2,500 Li proyect; ~30k grafito (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "<0.5% Li; ~1.5% grafito (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "5-8 Li+grafito+TR (USGS 2024; reportes operadores litio)",
+    "reservas_pct": "~5-8% Li pegmatitas (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "900-1,200 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD <10km: PE Grão Mogol próximo; RPPN privadas múltiples; Mata Atlântica fragmentos (Ley protección); transição cerrado-caatinga ecótonos sensibles [Fuente: WDPA 2024 - World Database on Protected Areas www.protectedplanet.net]",
+    "actividades": "3 actividades: (1) Agricultura; (2) Ganadería; (3) Turismo... · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Ganadería: censos ganaderos + Google Earth 2024; Turismo: estadísticas oficiales turismo (SERNATUR/MINCETUR/SECTUR)]",
+    "poblacion": "30-50k influencia directa; región ~800k total (alta pobreza IDH bajo); Araçuaí ~36k, Itinga ~15k, Grão Mogol ~15k; ~60% rural [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sin indígenas significativa actual; histórico Botocudo/Maxakali (extintos/desplazados s.XIX-XX); mestiza, afrodescendiente; quilombolas moderados reconocimiento; alta vulnerabilidad social rural tradicional [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "ANA: ~15-20 fluviométricas Jequitinhonha, ~8-10 Mucuri; INMET ~10 meteorológicas; datos >40años algunas; portal SNIRH público; CBH limitado; Sigma monitoreo privado; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Sigma EIA-RIMA SUPRAM-MG/COPAM disponível; Licenças LP/LI/LO públicas; Plano Recursos Hídricos Bacia IGAM; CPRM hidrogeologia; UFMG/UNIMONTES tesis; sequía 2014-2017 'pior seca' documentada ANA; Decretos emergência; Acceso: MEDIO-ALTO [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Salar de Arizaro",
+    "pais": "Argentina",
+    "mineral": "Litio",
+    "rank": 16,
+    "score_final": 1.8499900000000002,
+    "d1_score": 1.5714000000000001,
+    "d2_score": 2.25,
+    "d3_score": 1.0,
+    "d4_score": 2.0,
+    "n11": 1.0,
+    "n12": 3.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 1.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "Salta, Los Andes",
+    "empresas": "Eramet-Tsingshan",
+    "produccion": "Construcción (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "N/D",
+    "reservas": "2.5 Li (USGS 2024; reportes operadores litio)",
+    "reservas_pct": "~9% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "100-200 mm/año (agencias meteorológicas nacionales)",
+    "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP; cuenca endorreica altiplano; puna salteña [Verificado: WDPA 2024]",
+    "actividades": "0 actividades: Sin competencia significativa; Centenario-Ratones DLE inicio construcción 2024; producción 24k ton/año 2026 [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "Población dispersa <2,000 región [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Kolla dispersas; consulta previa proceso 2022-2023; inicio operaciones inminente [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "Salta monitoreo proyecto limitado público; Eramet privado; Estado: BAJO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Eramet Press 2024; Mining Argentina; S&P Global; Acceso: BAJO-MEDIO [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Tambo",
+    "pais": "Perú",
+    "mineral": "Cobre",
+    "rank": 18,
+    "score_final": 1.8,
+    "d1_score": 1.0,
+    "d2_score": 2.25,
+    "d3_score": 2.5,
+    "d4_score": 2.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 2.0,
+    "n32": 3.0,
+    "n41": 2.0,
+    "region": "Arequipa, Valle Tambo",
+    "empresas": "Tía María (PARALIZADO)",
+    "produccion": "0 (paralizado) (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "2.7 Cu (USGS 2024; reportes técnicos operadores cobre)",
+    "reservas_pct": "~0.3% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "100-300 mm/año (agencias meteorológicas nacionales)",
+    "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP; valle Tambo productivo agrícola; costa árida [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Agri: valle 13,000ha arroz/olivo/ajo exportación; OPOSICIÓN extrema minería; agu [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "Valle Tambo ~30k agricultores; proyecto paralizado 2019; 7 muertos protestas 2015; rechazo total población [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Mestiza agricultores; identidad valle fuerte; movilización permanente; UNCA organización rechazo; NO minería jamás [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "ANA: ~4 estaciones; sin monitoreo minero (paralizado); Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Defensoría Perú 2015-2023; Southern Copper; El Comercio; UNCA comunicados; Acceso: ALTO (conflicto muy documentado) [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Copiapó",
+    "pais": "Chile",
+    "mineral": "Cobre",
+    "rank": 19,
+    "score_final": 1.8,
+    "d1_score": 1.0,
+    "d2_score": 2.375,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 2.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "Atacama, Copiapó",
+    "empresas": "Candelaria (Lundin)",
+    "produccion": "155,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~0.7% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "1.8 Cu (USGS 2024; reportes técnicos operadores cobre)",
+    "reservas_pct": "~0.2% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "12-25 mm/año (agencias meteorológicas nacionales)",
+    "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Extremely High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP; glaciares retroceso 90%; Decreto sequía permanente desde 2018 [Verificado: WDPA 2024]",
+    "actividades": "2 actividades: (1) Agricultura; (2) Ganadería; Agri: valle productivo CONFLICTO agua crítico; Ganad: extens · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Ganadería: censos ganaderos + Google Earth 2024]",
+    "poblacion": "Copiapó ~160k; valle ~200k; Decreto sequía toda cuenca; pozos ilegales problema [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Mestiza; agricultores tradicionales sin reconocimiento indígena formal; organizados oposición expansión minera [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: ~8 estaciones; reconstrucción red post-aluvión 2015; monitoreo mejorado pero insuficiente; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Lundin Annual Report 2023; DGA Chile; Cochilco; Decretos sequía 2018-2025; Estudios glaciares Copiapó [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Salar de Uyuni",
+    "pais": "Bolivia",
+    "mineral": "Litio",
+    "rank": 20,
+    "score_final": 1.79999,
+    "d1_score": 1.5714000000000001,
+    "d2_score": 1.875,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 1.0,
+    "n12": 3.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 3.0,
+    "n31": 2.0,
+    "n32": 2.0,
+    "n41": 2.0,
+    "region": "Potosí, Nor Lípez",
+    "empresas": "YLB (estatal)",
+    "produccion": "~2,000 LCE (real) (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "<0.3% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "21-23 Li (USGS 2024; reportes operadores litio)",
+    "reservas_pct": "~20-25% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "150-250 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (est.) (WRI Aqueduct 4.0)",
+    "areas_protegidas": "DENTRO: Sin AP dentro salar; proximidad RN Fauna Andina Eduardo Avaroa ~50km oeste; lagunas Colorada/Verde; Tunupa volcán sagrado; islas ecosistemas únicos cactus milenarios [Fuente: WDPA 2024 - World Database on Protected Areas www.protectedplanet.net]",
+    "actividades": "3 actividades: (1) Agricultura; (2) Ganadería; (3) Turismo... · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Ganadería: censos ganaderos + Google Earth 2024; Turismo: estadísticas oficiales turismo (SERNATUR/MINCETUR/SECTUR)]",
+    "poblacion": "30-35k influencia; Uyuni ~21k (crece turismo); Colchani ~600; dispersos ayllos ~5-8k Nor Lípez [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Aymara+Quechua; ayllos Nor Lípez (federación); >80-90% indígena; Aymara lengua materna; TCO proceso; TENSIÓN YLB; demandas participación beneficios; protestas 2019/2023; consulta ILO 169 aplicación deficiente; DLE agua dulce conflicto proyectado [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "SISAG: muy pocas estaciones; meteorológica Uyuni limitada; sin fluviométricas (endorreica); YLB: ~10-15 pozos exploración datos no públicos; satélite GRACE/MODIS investigación internacional; Estado: BAJO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Fichas Ambientales YLB acceso limitado; Estudios YLB geoquímica restringidos; SERGEOTECMIN geología regional; >30 papers internacionales hidrogeología; Mongabay 2024-25 investigaciones DLE; Dialogue Earth 2023; Acceso: BAJO-MEDIO [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Santa",
+    "pais": "Perú",
+    "mineral": "Cobre+Zinc",
+    "rank": 21,
+    "score_final": 1.750005,
+    "d1_score": 1.7143000000000002,
+    "d2_score": 2.0,
+    "d3_score": 2.0,
+    "d4_score": 1.0,
+    "n11": 2.0,
+    "n12": 1.0,
+    "n21": 2.0,
+    "n22": 2.0,
+    "n23": 2.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Áncash, Cordillera Blanca",
+    "empresas": "Antamina",
+    "produccion": "450,000 Cu+Zn (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~2.0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "7.1 Cu (USGS 2024; Antamina Reserves 2024)",
+    "reservas_pct": "~0.8% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "500-900 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "DENTRO: PN Huascarán (UNESCO) proximidad; no dentro pero aguas arriba glaciares; retroceso 40% desde 1970 [Fuente: WDPA 2024 - World Database on Protected Areas www.protectedplanet.net]",
+    "actividades": "2 actividades: (1) Agricultura; (2) Hidroeléctricas; Agri: valle Santa productivo; hidroeléctricas Cañón del Pato · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Hidroeléctricas: operadores nacionales energía]",
+    "poblacion": "Valle ~500k; Huaraz ~130k; agricultura intensiva + turismo Huascarán; conflictos agua recurrentes [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Quechua; comunidades campesinas; negociaciones permanentes Antamina; menos conflictivo otros casos; acuerdos parciales [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "ANA: ~10 estaciones; Antamina monitoreo extenso; INAIGEM monitoreo glaciares; Estado: BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Antamina Sustainability 2023; ANA Perú; INAIGEM glaciares [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Huasco",
+    "pais": "Chile",
+    "mineral": "Cobre+Oro",
+    "rank": 22,
+    "score_final": 1.75,
+    "d1_score": 1.0,
+    "d2_score": 2.25,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "Atacama, Vallenar",
+    "empresas": "El Morro (suspendido)",
+    "produccion": "Suspendido 2016 (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "3.9 Cu+Au (USGS 2024; reportes técnicos operadores cobre)",
+    "reservas_pct": "~0.5% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "50-100 mm/año (agencias meteorológicas nacionales)",
+    "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP grandes; glaciares frontera Argentina; zona transición [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Agri: valle Huasco productivo exportación (uva mesa, olivos); oposición agrícola [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "Valle ~50k; Vallenar ~52k; agricultores organizados rechazo total [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Diaguita (reconocidos 2006); agricultores tradicionales; 'No a Pascua Lama, No a El Morro'; litigio ambiental ganado 2016 [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: ~6 estaciones Huasco; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "MinMining Database 2024; DGA Chile; Sentencias judiciales [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuenca Río San Juan",
+    "pais": "Argentina",
+    "mineral": "Cobre+Oro",
+    "rank": 23,
+    "score_final": 1.749995,
+    "d1_score": 1.2857,
+    "d2_score": 2.375,
+    "d3_score": 2.0,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 2.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 2.0,
+    "n31": 1.0,
+    "n32": 3.0,
+    "n41": 1.0,
+    "region": "San Juan, Precordillera",
+    "empresas": "Los Azules (McEwen)",
+    "produccion": "Exploración (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "9.5 Cu+Au (USGS 2024; reportes técnicos operadores cobre)",
+    "reservas_pct": "~1.1% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "100-200 mm/año (agencias meteorológicas nacionales)",
+    "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Zona glaciares precordillera; sin AP grandes pero área sensible hielo andino [Verificado: WDPA 2024]",
+    "actividades": "2 actividades: (1) Agricultura; (2) Ganadería; Ganad: bovina/caprina baja escala; sin agricultura; glaciare · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Ganadería: censos ganaderos + Google Earth 2024]",
+    "poblacion": "~5,000 cuenca alta dispersos [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sin indígenas; rural; Ley 7722 (2007) prohíbe megaminería uso cianuro/ácido; proyecto bloqueado legal [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "San Juan limitado; proyecto sin operación bloqueado; Estado: BAJO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "McEwen Mining 2024; San Juan Mining; Ley 7722 [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Aconcagua",
+    "pais": "Chile",
+    "mineral": "Cobre+Mo",
+    "rank": 24,
+    "score_final": 1.7000050000000002,
+    "d1_score": 1.7143000000000002,
+    "d2_score": 1.75,
+    "d3_score": 1.0,
+    "d4_score": 2.0,
+    "n11": 2.0,
+    "n12": 1.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 2.0,
+    "n31": 1.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "Valparaíso, Los Andes",
+    "empresas": "Andina (Codelco)",
+    "produccion": "217,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~1.0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "2.4 Cu (USGS 2024; Codelco Recursos y Reservas 2024)",
+    "reservas_pct": "~0.3% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "300-500 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP grandes; retroceso glaciar Juncal documentado 35% [Verificado: WDPA 2024]",
+    "actividades": "2 actividades: (1) Agricultura; (2) Agua potable/urbano; Agua potable 1.5M personas Valparaíso-Viña; Agri: intensiva; · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Agua potable: censos + empresas sanitarias]",
+    "poblacion": "Abastece Valparaíso-Viña ~1.5M; Los Andes ~80k; conflicto permanente asignación agua [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sin indígenas; urbano-agrícola; movilizaciones vs expansión Andina recurrentes [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: >12 estaciones >60años; mejor monitoreada región; Estado: EXCELENTE [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Codelco 2023; DGA Chile [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Bacadéhuachi",
+    "pais": "México",
+    "mineral": "Litio",
+    "rank": 26,
+    "score_final": 1.6999900000000001,
+    "d1_score": 1.5714000000000001,
+    "d2_score": 2.25,
+    "d3_score": 1.0,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 3.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 1.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Noroeste de Sonora",
+    "empresas": "Ganfeng Lithium",
+    "produccion": "35,000 LCE proyectado (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "N/D",
+    "reservas": "243M ton mineral (USGS 2024; reportes empresas chinas litio)",
+    "reservas_pct": "N/D pegmatita (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "150-300 mm/año (agencias meteorológicas nacionales)",
+    "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD <10km: Sin AP directas; proximidad costa Golfo California; desierto sonorense [Verificado: WDPA 2024]",
+    "actividades": "0 actividades: Proyecto nacionalizado 2023; Ganfeng-Bacanora suspendido; Litio para México (estatal) control; desarrollo incierto post-nacionalización [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "979, alta migració, población dispersa [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sin embargo su origen se asocia al asentamiento de grupos indigenas ópatas. [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "CONAGUA: regional básico; proyecto suspendido; Estado: BAJO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Bacanora Minerals (pre-nacionalización); Decreto nacionalización litio 2023 [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuenca Lerma-Chapala (lago)",
+    "pais": "México",
+    "mineral": "Litio",
+    "rank": 27,
+    "score_final": 1.6999900000000001,
+    "d1_score": 1.5714000000000001,
+    "d2_score": 2.25,
+    "d3_score": 1.0,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 3.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 1.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Jalisco-Guanajuato",
+    "empresas": "Bacanora-Ganfeng (SUSPENDIDO)",
+    "produccion": "0 (suspendido) (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "0.9 Li est. (USGS 2024; reportes empresas chinas litio)",
+    "reservas_pct": "~3% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "600-800 mm/año (agencias meteorológicas nacionales)",
+    "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Lago Chapala; sin AP grandes cuenca; zona densamente poblada [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Lago Chapala mayor México; agricultura intensiva; proyecto litio suspendido naci [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "Cuenca ~8M habitantes; Guadalajara ~5M; Chapala vital región [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sin indígenas área proyecto específico; región mestiza [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "CONAGUA: red extensa Lerma-Chapala; sin monitoreo litio (suspendido); Estado: BUENO cuenca [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Decreto nacionalización 2023; Bacanora pre-nacionalización; CONAGUA [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Salar de Rincón",
+    "pais": "Argentina",
+    "mineral": "Litio",
+    "rank": 28,
+    "score_final": 1.6999900000000001,
+    "d1_score": 1.5714000000000001,
+    "d2_score": 2.25,
+    "d3_score": 1.0,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 3.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 1.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Salta, Los Andes",
+    "empresas": "Rio Tinto",
+    "produccion": "Desarrollo (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "N/D",
+    "reservas": "2.5 Li (USGS 2024; reportes operadores litio)",
+    "reservas_pct": "~9% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "100-200 mm/año (agencias meteorológicas nacionales)",
+    "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP; puna salteña ecosistemas únicos [Verificado: WDPA 2024]",
+    "actividades": "0 actividades: Proyecto expansión 3k→60k ton/año DLE tecnología 2028; inversión USD 2,500M anunciada 2024 [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "~1,500 región; comunidades dispersas [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Kolla; negociaciones inicio fase construcción; proyección producción 2028 [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "Rio Tinto monitoreo privado construcción; Estado: BAJO-MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Rio Tinto 2024; S&P Global Lithium 2024; Fastmarkets [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Apurímac",
+    "pais": "Perú",
+    "mineral": "Cobre",
+    "rank": 29,
+    "score_final": 1.650005,
+    "d1_score": 1.7143000000000002,
+    "d2_score": 1.75,
+    "d3_score": 2.0,
+    "d4_score": 1.0,
+    "n11": 2.0,
+    "n12": 1.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 2.0,
+    "n31": 2.0,
+    "n32": 2.0,
+    "n41": 1.0,
+    "region": "Apurímac-Cusco",
+    "empresas": "Las Bambas (MMG)",
+    "produccion": "~310,000 Cu (variable) (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~1.5% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "6.9 Cu (USGS 2024; reportes técnicos operadores cobre)",
+    "reservas_pct": "~0.8% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "600-1,000 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP grandes; lagunas Challhuacocha sin protección formal; bofedales extensos; glaciares retroceso [Verificado: WDPA 2024]",
+    "actividades": "2 actividades: (1) Agricultura; (2) Ganadería; Agri andina: 10-15k ha papa/quinua; Ganad: ~100k alpacas; tr · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Ganadería: censos ganaderos + Google Earth 2024]",
+    "poblacion": "15-25k influencia directa; Fuerabamba reasentada 2014; ~50 comunidades campesinas área; provincias ~110k total [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Quechua; >90% rural; Fuerabamba reasentamiento 2014 conflictivo; >4,500 eventos conflicto Defensoría; bloqueos corredor permanentes 2015-presente; muertes 2015-16; estado emergencia decretado múltiple; pre-Ley Consulta 2011; demandas regalías/agua/contaminación insatisfechas [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "ANA: ~8-12 estaciones (media-baja mayoría); MMG ~20-30 superficial +15-20 subterránea privado; comunidades+ONG intentos independientes capacidad limitada; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "EIA Las Bambas 2011 SENACE (Xstrata); OEFA fiscalización+PAS múltiples; Defensoría >50 reportes conflicto 2015-2025 (narrativa excelente); UNSAAC/Lima tesis; ANA regional [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Subcuenca Salar Atacama SO",
+    "pais": "Chile",
+    "mineral": "Cobre",
+    "rank": 30,
+    "score_final": 1.65,
+    "d1_score": 1.0,
+    "d2_score": 2.5,
+    "d3_score": 1.5,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 3.0,
+    "n22": 2.0,
+    "n23": 1.0,
+    "n31": 1.0,
+    "n32": 2.0,
+    "n41": 1.0,
+    "region": "Antofagasta",
+    "empresas": "Zaldívar (Barrick)",
+    "produccion": "~140,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~0.6% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "~2 Cu est. (USGS 2024; reportes técnicos operadores cobre)",
+    "reservas_pct": "~0.2% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "10-30 mm/año (agencias meteorológicas nacionales)",
+    "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Extremely High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD: Cuenca Salar Atacama sur; comparte ecosistemas Ramsar [Fuente: Ramsar Sites Information Service 2024 rsis.ramsar.org]",
+    "actividades": "0 actividades: Competencia vs Escondida/litio/Peine; extracción subterránea intensiva acumulada [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "~2,000 área; parte conflicto Peine vs múltiples empresas [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Lickanantay Peine; demandas conjuntas vs múltiples operaciones mineras [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "Barrick monitoreo privado; DGA regional; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Barrick Sustainability 2024; Cochilco [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Salar de Maricunga",
+    "pais": "Chile",
+    "mineral": "Litio",
+    "rank": 31,
+    "score_final": 1.649995,
+    "d1_score": 1.2857,
+    "d2_score": 2.375,
+    "d3_score": 1.0,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 2.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 2.0,
+    "n31": 1.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Atacama, noreste de Copiapó",
+    "empresas": "Litio Minera (Pluspetrol)",
+    "produccion": "Exploración (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "0.4 Li est. (USGS 2024; reportes operadores litio)",
+    "reservas_pct": "~2% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "<50 mm/año (agencias meteorológicas nacionales)",
+    "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Extremely High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Lagunas altoandinas 4,500m ecosistemas únicos; sin AP formal pero críticas ambientales fuertes [Verificado: WDPA 2024]",
+    "actividades": "2 actividades: (1) Agricultura; (2) Turismo; Sin agricultura (altitud extrema); minería menor; turismo ba · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Turismo: estadísticas oficiales turismo (SERNATUR/MINCETUR/SECTUR)]",
+    "poblacion": "Población dispersa <1,000 región; pastores trashumantes temporales [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Colla; oposición comunidades vs litio; lagunas altoandinas significado cultural-espiritual; protestas 2020-2023 [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: estaciones limitadas altitud extrema; proyecto exploración; Estado: BAJO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "SERNAGEOMIN Chile; Pluspetrol Presentations; Prensa conflictos [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Conchos",
+    "pais": "México",
+    "mineral": "Cobre+Plata",
+    "rank": 32,
+    "score_final": 1.5999999999999999,
+    "d1_score": 1.0,
+    "d2_score": 2.25,
+    "d3_score": 2.0,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Chihuahua, Delicias",
+    "empresas": "Santa Eulalia",
+    "produccion": "~15,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~0.07% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "N/D",
+    "reservas_pct": "N/D",
+    "precipitacion": "400-600 mm/año (agencias meteorológicas nacionales)",
+    "bws": "60-80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP grandes; cuenca Río Bravo; zona agrícola [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Agri: Delicias región productiva (chile, algodón, nogal); Conchos afluente princ [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "~150k cuenca; Delicias ~150k; región agrícola importante [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Tarahumara (Rarámuri) Sierra Tarahumara cuenca alta; sin impacto directo minería cobre escala menor [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "CONAGUA: ~6 estaciones Conchos; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "CONAGUA; tratado agua México-USA [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Salinas Grandes",
+    "pais": "Argentina",
+    "mineral": "Litio",
+    "rank": 33,
+    "score_final": 1.59999,
+    "d1_score": 1.5714000000000001,
+    "d2_score": 1.625,
+    "d3_score": 2.5,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 3.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 2.0,
+    "n32": 3.0,
+    "n41": 1.0,
+    "region": "Jujuy-Salta",
+    "empresas": "BLOQUEADO",
+    "produccion": "0 (bloqueado) (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "0.9 Li est. (USGS 2024; reportes operadores litio)",
+    "reservas_pct": "~3% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "150-250 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP formal pero ecosistema icónico; sitio cultural-turístico reconocido Ruta 52 [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Turismo; Turismo: visitantes Salinas; sal tradicional artesanal; extracción menor; NO lit [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "33 comunidades; ~10,000 indígenas región Salinas [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Kolla+Atacama; 33 comunidades OPOSICIÓN total desde 2010; Corte IDH 2012 consulta previa; 10,000 años presencia; bloqueado absoluto [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "Sin monitoreo minero (bloqueado total); provincial básico; Estado: BAJO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Svampa & Viale 2014; Puente 2020; FARN Argentina; Corte IDH 2012 [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Mantaro",
+    "pais": "Perú",
+    "mineral": "Cobre+Zinc",
+    "rank": 34,
+    "score_final": 1.5000000000000002,
+    "d1_score": 1.0,
+    "d2_score": 1.75,
+    "d3_score": 1.5,
+    "d4_score": 2.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 2.0,
+    "n31": 1.0,
+    "n32": 2.0,
+    "n41": 2.0,
+    "region": "Junín, Jauja",
+    "empresas": "Cobriza, Toromocho",
+    "produccion": "~120,000 múltiple (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~0.5% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "N/D",
+    "reservas_pct": "N/D",
+    "precipitacion": "700-1,000 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP grandes; cuenca central Perú agrícola-ganadera [Verificado: WDPA 2024]",
+    "actividades": "2 actividades: (1) Agricultura; (2) Ganadería; Agri: papa, ganado vacuno; Cobriza Doe Run cerrada; Toromoch · [Fuentes: Agricultura: Google Earth 2024 + censos agropecuarios nacionales; Ganadería: censos ganaderos + Google Earth 2024]",
+    "poblacion": "Valle Mantaro ~1M; Oroya (~30k) contaminación crítica histórica fundición; Jauja ~100k [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Quechua; comunidades campesinas; conflictos históricos Oroya fundición plomo; Toromocho negociaciones; demandas salud [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "ANA: ~12 estaciones; Chinalco Toromocho monitoreo; Estado: BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Chinalco Reports; ANA Perú; OEFA; Oroya estudios contaminación; Acceso: MEDIO-ALTO [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuenca distrito minero Sierra Gorda",
+    "pais": "Chile",
+    "mineral": "Cobre",
+    "rank": 35,
+    "score_final": 1.5,
+    "d1_score": 1.0,
+    "d2_score": 2.25,
+    "d3_score": 1.0,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 1.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Antofagasta, Sierra Gorda",
+    "empresas": "Spence (BHP), Sierra Gorda (KGHM-Sumitomo)",
+    "produccion": "~200,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~0.9% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "~3 Cu est. (USGS 2024; BHP Ore Reserves 2024)",
+    "reservas_pct": "~0.4% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "10-30 mm/año (agencias meteorológicas nacionales)",
+    "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Extremely High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP; desierto absoluto; agua desalada uso parcial [Verificado: WDPA 2024]",
+    "actividades": "0 actividades: Sin competencia significativa; operación desaladora reduce presión acuíferos; zona desértica [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "Sierra Gorda ~1,500; campamento minero temporal [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sin indígenas zona [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "BHP monitoreo privado; DGA regional limitado; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "BHP Reports; Cochilco [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Subcuenca Río São Francisco (Minas Gerais)",
+    "pais": "Brasil",
+    "mineral": "Grafito",
+    "rank": 36,
+    "score_final": 1.5,
+    "d1_score": 1.0,
+    "d2_score": 2.125,
+    "d3_score": 1.5,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 2.0,
+    "n22": 3.0,
+    "n23": 1.0,
+    "n31": 2.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Minas Gerais, Salinas",
+    "empresas": "Varias pequenas",
+    "produccion": "Artesanal (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "N/D",
+    "reservas": "Recursos importantes (USGS 2024; reportes técnicos operadores grafito)",
+    "reservas_pct": "N/D",
+    "precipitacion": "900-1,100 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sem AP grandes; vale São Francisco norte MG; Cerrado-Caatinga transição [Fuente: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Grafito artesanal/pequena escala histórico; agricultura familiar; mineração info [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "~30k região mineração grafito; população dispersa rural [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sem indígenas significativa; rural tradicional vulnerável [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "ANA: rede básica São Francisco; sem monitoreo específico grafito artesanal; Estado: BAIXO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "DNPM/ANM registros; Estudos grafito MG; Acceso: BAIXO [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Subcuenca Río Itacaiúnas (Cateté)",
+    "pais": "Brasil",
+    "mineral": "Níquel+Cobre",
+    "rank": 37,
+    "score_final": 1.4500049999999998,
+    "d1_score": 1.7143000000000002,
+    "d2_score": 1.25,
+    "d3_score": 2.0,
+    "d4_score": 1.0,
+    "n11": 2.0,
+    "n12": 1.0,
+    "n21": 1.0,
+    "n22": 2.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Pará, Parauapebas",
+    "empresas": "Vale (Onça Puma, Salobo)",
+    "produccion": "~50,000 Ni (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~2.0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "Significativas (USGS 2024; reportes técnicos operadores cobre)",
+    "reservas_pct": "N/D",
+    "precipitacion": "1,800-2,400 mm/año (agencias meteorológicas nacionales)",
+    "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Low-Medium (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD <10km: Proximidade Floresta Nacional Carajás; TI Xikrin cercanas; Amazônia biodiversidade crítica [Fuente: WDPA 2024]",
+    "actividades": "0 actividades: Floresta Amazônica; mineração vs conservação; Carajás megaprojeto ferro+níquel+cobre; desmatamento preocupação [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "~50k área influencia; Parauapebas ~200k (cresceu mineração); população indígena TI próximas [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Xikrin do Cateté (Kayapó); TI Cateté demarcada; compensações Vale negociadas; tensões recorrentes impactos rios [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "ANA: rede limitada Amazônia; Vale monitoreo privado extenso Carajás; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Vale Sustainability Report 2023; FUNAI; ICMBio [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuenca Alta Río Paraopeba",
+    "pais": "Brasil",
+    "mineral": "Níquel",
+    "rank": 38,
+    "score_final": 1.4500049999999998,
+    "d1_score": 1.7143000000000002,
+    "d2_score": 1.25,
+    "d3_score": 2.0,
+    "d4_score": 1.0,
+    "n11": 2.0,
+    "n12": 1.0,
+    "n21": 1.0,
+    "n22": 2.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Minas Gerais, Belo Vale",
+    "empresas": "Anglo American",
+    "produccion": "~40,000 Ni (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~1.6% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "Significativas (USGS 2024; reportes técnicos operadores níquel)",
+    "reservas_pct": "N/D",
+    "precipitacion": "1,400-1,700 mm/año (agencias meteorológicas nacionales)",
+    "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Low-Medium (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD <10km: Proximidade PE Serra do Rola Moça; Mata Atlântica fragmentada; nascentes Rio Paraopeba [Fuente: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Mineração níquel; agricultura familiar café; Brumadinho barragem Córrego Feijão [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "~50k área influencia; Belo Vale ~8k; região metropolitana BH próxima [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sem indígenas; rural tradicional; trauma Brumadinho aumentou oposição mineração região [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "IGAM MG: monitoreo Paraopeba intensificado pós-Brumadinho; Anglo monitoreo; Estado: MÉDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Anglo American Sustainability 2023; IGAM MG; Relatórios Brumadinho 2019 [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Salar de Coipasa",
+    "pais": "Bolivia",
+    "mineral": "Litio",
+    "rank": 39,
+    "score_final": 1.4499900000000001,
+    "d1_score": 1.5714000000000001,
+    "d2_score": 1.625,
+    "d3_score": 1.0,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 3.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 1.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Oruro, Nor Carangas",
+    "empresas": "YLB-TBEA (China)",
+    "produccion": "Desarrollo (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "N/D",
+    "reservas": "2.3 Li (USGS 2024; reportes operadores litio)",
+    "reservas_pct": "~8% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "150-250 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (est.) (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD <10km: Sin AP; altiplano; proximidad ecosistemas altoandinos [Verificado: WDPA 2024]",
+    "actividades": "0 actividades: Desarrollo tecnología DLE con TBEA China; producción proyectada 25k ton/año; estado inicial construcción [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "Población dispersa ~2,000 región; ayllos dispersos [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Aymara; ayllos; negociaciones YLB inicio; proyecto fase temprana [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "YLB monitoreo proyecto limitado; Estado: BAJO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "YLB announcements; Bolivia Mining reports [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Salar de Pastos Grandes",
+    "pais": "Bolivia",
+    "mineral": "Litio",
+    "rank": 40,
+    "score_final": 1.4499900000000001,
+    "d1_score": 1.5714000000000001,
+    "d2_score": 1.625,
+    "d3_score": 1.0,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 3.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 1.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Potosí-Salta frontera",
+    "empresas": "YLB-TBEA exploración",
+    "produccion": "Exploración (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "0.8 Li est. (USGS 2024; reportes operadores litio)",
+    "reservas_pct": "~3% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "100-200 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (est.) (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Frontera Argentina-Bolivia; sin AP; puna alta [Verificado: WDPA 2024]",
+    "actividades": "0 actividades: Exploración temprana; sin desarrollo actual [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "Población <1,000 región; extremadamente dispersa [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Aymara/Atacama; población mínima; sin desarrollo minero actual [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "Sin monitoreo (exploración); Estado: MUY BAJO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "YLB exploration docs; USGS; Acceso: MUY BAJO [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Rímac",
+    "pais": "Perú",
+    "mineral": "Cobre+Zinc",
+    "rank": 42,
+    "score_final": 1.2999999999999998,
+    "d1_score": 1.0,
+    "d2_score": 1.625,
+    "d3_score": 1.5,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 2.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 2.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Lima, Chosica",
+    "empresas": "Morococha, Casapalca",
+    "produccion": "~50,000 múltiple (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~0.2% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "N/D",
+    "reservas_pct": "N/D",
+    "precipitacion": "600-800 mm/año (agencias meteorológicas nacionales)",
+    "bws": "40-60% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP cuenca alta minera; cabecera Lima metropolitana [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agua potable/urbano; Abastece 80% agua potable Lima 10M; relaves históricos críticos; Chinalco reubic [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "Lima 10M depende cuenca; Morococha reubicada ~3,000; conflicto histórico parcialmente resuelto 2012 [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Mestiza; Morococha reubicación controvertida 2007-2012; comunidades campesinas cuenca alta negociaciones [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "ANA: ~8 estaciones >40años; Chinalco monitoreo; SEDAPAL monitoreo calidad agua potable; Estado: BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "ANA Perú; Chinalco Annual; OEFA Perú; SEDAPAL reportes [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuenca Río Zamora-Santiago",
+    "pais": "Ecuador",
+    "mineral": "Cobre+Oro",
+    "rank": 43,
+    "score_final": 1.25,
+    "d1_score": 1.0,
+    "d2_score": 1.25,
+    "d3_score": 2.5,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 1.0,
+    "n22": 2.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 2.0,
+    "n41": 1.0,
+    "region": "Zamora-Chinchipe",
+    "empresas": "Mirador (CRCC), Fruta del Norte",
+    "produccion": "60,000 Cu + 300k oz Au (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~0.3% Cu; significativo Au (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "3.2 Cu+Au (USGS 2024; reportes técnicos operadores cobre)",
+    "reservas_pct": "~0.4% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "2,000-3,000 mm/año (agencias meteorológicas nacionales)",
+    "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Low-Medium (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD <10km: Proximidade PN Podocarpus; Cordillera del Cóndor; bosque nuboso Amazonia andina biodiversidad extrema; UNESCO Biosphere Podocarpus-El Cóndor [Fuente: WDPA 2024 - World Database on Protected Areas www.protectedplanet.net]",
+    "actividades": "0 actividades: Minería vs conservación; Shuar territorios ancestrales; ríos Zamora/Nangaritza críticos; oposición ambiental nacional fuerte [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "~50k área influencia; Zamora ~25k; Gualaquiza ~20k; comunidades Shuar dispersas [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Shuar; territorios ancestrales no totalmente reconocidos; conflictos Mirador violentos 2016 (policía vs Shuar); Fruta del Norte acuerdos parciales; tensión permanente [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "SENAGUA: red limitada Amazonía; CRCC/Lundin Gold monitoreo privado; Estado: BAJO-MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Lundin Gold Sustainability 2023; CRCC reports; Acción Ecológica Ecuador; Sentencias judiciales [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Río Rapel",
+    "pais": "Chile",
+    "mineral": "Cobre",
+    "rank": 44,
+    "score_final": 1.25,
+    "d1_score": 1.0,
+    "d2_score": 1.0,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 1.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "O'Higgins-Maule",
+    "empresas": "Pequeñas varias",
+    "produccion": "~15,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~0.07% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "N/D",
+    "reservas_pct": "N/D",
+    "precipitacion": "600-900 mm/año (agencias meteorológicas nacionales)",
+    "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Medium-High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP grandes; zona vitivinícola Colchagua reconocida [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Agri: vino valle Colchagua exportación; minería menor escala; sequía 2019-2022 [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "~300k cuenca; San Fernando ~80k; agricultura vino relevancia económica [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sin indígenas significativa [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA: ~8 estaciones; Estado: BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "DGA Chile 2023 [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuenca Río Polochic y Lago Izabal",
+    "pais": "Guatemala",
+    "mineral": "Níquel+Cobalto",
+    "rank": 45,
+    "score_final": 1.25,
+    "d1_score": 1.0,
+    "d2_score": 1.0,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 1.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "Izabal, El Estor",
+    "empresas": "CGN Solway (SUSPENDIDA 2020)",
+    "produccion": "0 (suspendida) (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "N/D",
+    "reservas_pct": "N/D",
+    "precipitacion": "2,500-3,500 mm/año (agencias meteorológicas nacionales)",
+    "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Low-Medium (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD <10km: Proximidade Lago Izabal; sin AP grandes pero ecosistemas lacustres críticos; bosques húmedos [Verificado: WDPA 2024]",
+    "actividades": "0 actividades: Suspendida 2020 protestas; Fenix/CGN Solway conflicto violento 2009-2021; Estado sitio decretado 2021; operación cancelada definitivamente 2022 [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "El Estor ~60k; comunidades Q'eqchi' mayores afectadas; conflicto extremo [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Q'eqchi' (Maya); territorio ancestral no reconocido consulta previa; violencia 2009-2021 múltiples muertos; Estado sitio 2021; comunidades ganaron suspensión operación 2022 definitiva [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "Sin monitoreo activo (suspendida); INSIVUMEH básico; Estado: BAJO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Sentencias judiciales Guatemala 2022; Solway reports pre-suspensión; Prensa conflicto; Acceso: MEDIO (conflicto documentado) [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuenca Río Parauapebas (Carajás)",
+    "pais": "Brasil",
+    "mineral": "Cobre+Níquel",
+    "rank": 46,
+    "score_final": 1.2,
+    "d1_score": 1.0,
+    "d2_score": 1.25,
+    "d3_score": 2.0,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 1.0,
+    "n22": 2.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "Pará, Parauapebas",
+    "empresas": "Vale (Sossego, Salobo)",
+    "produccion": "~150,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~0.7% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "Masivas (USGS 2024; reportes técnicos operadores cobre)",
+    "reservas_pct": "N/D",
+    "precipitacion": "1,800-2,400 mm/año (agencias meteorológicas nacionales)",
+    "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Low-Medium (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD: FLONA Carajás; TI Xikrin; província mineral Carajás maior mundo ferro+metais base [Fuente: WDPA 2024]",
+    "actividades": "0 actividades: Megaprojeto Carajás; floresta vs mineração; infraestrutura ferrovia EFC crítica transporte; desmatamento indireto [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "Parauapebas ~200k (mineração); ~100k área influencia direta [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Xikrin; TI Cateté; compensações Vale; impactos rios Itacaiúnas/Parauapebas monitoreo [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "ANA: limitado; Vale monitoreo extenso privado; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Vale Annual Report 2023; FUNAI; ICMBio [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Sector Medio Río Loa",
+    "pais": "Chile",
+    "mineral": "Cobre+Mo",
+    "rank": 17,
+    "score_final": 1.8,
+    "d1_score": 1.0,
+    "d2_score": 2.25,
+    "d3_score": 2.5,
+    "d4_score": 2.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 3.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 2.0,
+    "n41": 2.0,
+    "region": "Antofagasta, Calama",
+    "empresas": "Ministro Hales, Gaby (Codelco)",
+    "produccion": "190,000 Cu (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~0.9% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "3.2 Cu (USGS 2024; Codelco Recursos y Reservas 2024)",
+    "reservas_pct": "~0.4% (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "5-15 mm/año (agencias meteorológicas nacionales)",
+    "bws": ">80% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Extremely High (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Parte cuenca Loa; mismos ecosistemas [Fuente: WDPA 2024]",
+    "actividades": "0 actividades: Misma competencia Loa; sector medio impacto acumulado minas [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "~50k zona media; comunidades dispersas Loa medio [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Atacameño; continuidad conflictos Loa; demandas acumuladas [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "DGA red Loa compartida; Codelco monitoreo; Estado: BUENO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Codelco 2023; DGA Loa; Cochilco [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Sistema de cuencas Moa-Levisa-Mayarí",
+    "pais": "Cuba",
+    "mineral": "Níquel+Cobalto",
+    "rank": 25,
+    "score_final": 1.7,
+    "d1_score": 2.0,
+    "d2_score": 1.25,
+    "d3_score": 2.0,
+    "d4_score": 2.0,
+    "n11": 2.0,
+    "n12": 2.0,
+    "n21": 1.0,
+    "n22": 2.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 2.0,
+    "region": "Holguín, Moa",
+    "empresas": "Cubaníquel, Moa Nickel (Sherritt)",
+    "produccion": "28,672 Ni + 2,876 Co (2023) (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~1.2% Ni; ~2.0% Co (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "5.5 Ni + 0.5 Co (USGS 2024; reportes técnicos operadores níquel)",
+    "reservas_pct": "~2.3% Ni; ~3.5% Co (USGS Mineral Commodity Summaries 2024)",
+    "precipitacion": "1,800-2,400 mm/año (agencias meteorológicas nacionales)",
+    "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Low-Medium (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD: Alejandro Humboldt NP (UNESCO); uno de ecosistemas más diversos Caribe; endemismos únicos; impactos ambientales Moa históricos críticos [Fuente: WDPA 2024]",
+    "actividades": "0 actividades: Minería níquel desde 1940s; impactos ambientales severos ríos/bahía Moa; lateritas niquelíferas; economía local dependiente 100% minería [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "Moa ~70k; área influencia ~100k; dependencia total economía minera [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Población mestiza/afrodescendiente; sin indígenas (extintos época colonial); comunidades dependientes empleo minero 100% [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "INRH Cuba: monitoreo limitado publicación; Sherritt monitoreo privado; Cubaníquel estatal; Estado: BAJO acceso datos [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Sherritt International Annual Report 2023; Cubaníquel reportes oficiales limitados; Estudios impacto ambiental Moa académicos; Acceso: BAJO-MEDIO [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Sistema de cuencas Yuna-Camú",
+    "pais": "República Dominicana",
+    "mineral": "Níquel",
+    "rank": 41,
+    "score_final": 1.350005,
+    "d1_score": 1.7143000000000002,
+    "d2_score": 1.0,
+    "d3_score": 2.0,
+    "d4_score": 1.0,
+    "n11": 2.0,
+    "n12": 1.0,
+    "n21": 1.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 3.0,
+    "n32": 1.0,
+    "n41": 1.0,
+    "region": "La Vega-Monseñor Nouel",
+    "empresas": "Falconbridge Dominicana (Falcondo)",
+    "produccion": "~40,000 Ni contenido (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "~1.6% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "N/D",
+    "reservas_pct": "N/D",
+    "precipitacion": "1,500-2,000 mm/año (agencias meteorológicas nacionales)",
+    "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Low-Medium (WRI Aqueduct 4.0)",
+    "areas_protegidas": "PROXIMIDAD <10km: Sin AP grandes zona minera; proximidad áreas agrícolas productivas; zona montañosa Cordillera Central [Verificado: WDPA 2024]",
+    "actividades": "1 actividad: Agricultura; Minería níquel desde 1971; Bonao región agrícola-minera; ríos Yuna/Camú importan [Fuentes: análisis visual Google Earth 2024; censos agropecuarios nacionales; estadísticas turismo/energía oficiales]",
+    "poblacion": "Bonao ~80k; área influencia ~150k; Monseñor Nouel provincia [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Sin indígenas (extintos época colonial); población mestiza; minería empleo significativo región [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "INDRHI: red básica ríos principales; Falcondo monitoreo privado; Estado: MEDIO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Glencore Reports (dueño Falcondo); INDRHI República Dominicana [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  },
+  {
+    "cuenca": "Cuencas endorreicas Sierra Santa Cruz",
+    "pais": "Guatemala",
+    "mineral": "Níquel+Cobalto+TR",
+    "rank": 47,
+    "score_final": 1.0999999999999999,
+    "d1_score": 1.0,
+    "d2_score": 1.0,
+    "d3_score": 2.0,
+    "d4_score": 1.0,
+    "n11": 1.0,
+    "n12": 1.0,
+    "n21": 1.0,
+    "n22": 1.0,
+    "n23": 1.0,
+    "n31": 2.0,
+    "n32": 2.0,
+    "n41": 1.0,
+    "region": "Alta Verapaz",
+    "empresas": "CANCELADAS 2025",
+    "produccion": "0 (canceladas) (USGS 2024; reportes anuales empresas)",
+    "prod_pct": "0% (USGS Mineral Commodity Summaries 2024)",
+    "reservas": "N/D",
+    "reservas_pct": "N/D",
+    "precipitacion": "2,500-3,500 mm/año (agencias meteorológicas nacionales)",
+    "bws": "20-40% (WRI Aqueduct 4.0 - Kuzma et al. 2023)",
+    "wri": "Low-Medium (WRI Aqueduct 4.0)",
+    "areas_protegidas": "Sin AP grandes; bosques nubosos sierra; biodiversidad alta [Verificado: WDPA 2024]",
+    "actividades": "0 actividades: Proyectos exploración cancelados 2025; oposición comunitaria Q'eqchi'; lecciones Fenix/Polochic aplicadas región [Fuentes: análisis Google Earth 2024; censos económicos nacionales; estadísticas sectoriales]",
+    "poblacion": "~40k área; comunidades Q'eqchi' dispersas [Fuentes: censos nacionales últimos disponibles; WorldPop 2020 donde aplicable]",
+    "comunidades": "Q'eqchi'; oposición preventiva basada Polochic; consultas comunitarias rechazo; proyectos cancelados sin iniciar operación [Fuentes: registros nacionales territorios indígenas; LandMark Global Platform; Defensorías Pueblo]",
+    "redes_monitoreo": "Sin monitoreo (cancelados exploración); INSIVUMEH básico; Estado: MUY BAJO [Fuentes: agencias nacionales agua; EIA empresas mineras]",
+    "info_disponible": "Prensa Guatemala 2024-2025; Consultas comunitarias [Fuentes: portales agencias agua nacionales; repositorios EIA; Web of Science]"
+  }
+];
+        const coordenadas = {
+  "Salar de Atacama": [
+    -23.5,
+    -68.2
+  ],
+  "Subcuenca Monturaqui-Negrillar": [
+    -23.0,
+    -69.3
+  ],
+  "Río Moquegua": [
+    -17.2,
+    -70.9
+  ],
+  "Salar del Hombre Muerto": [
+    -25.4,
+    -66.9
+  ],
+  "Cuenca Río Loa": [
+    -22.5,
+    -68.9
+  ],
+  "Río Sonora": [
+    29.3,
+    -110.9
+  ],
+  "Río Maipo": [
+    -33.5,
+    -70.6
+  ],
+  "Salar de Olaroz-Cauchari": [
+    -23.8,
+    -66.5
+  ],
+  "Río Limarí": [
+    -30.7,
+    -71.2
+  ],
+  "Río Choapa": [
+    -31.7,
+    -71.2
+  ],
+  "Río Cachapoal": [
+    -34.3,
+    -70.7
+  ],
+  "Cuenca Río Trombetas (Oriximiná)": [
+    -1.7,
+    -56.2
+  ],
+  "Río Elqui": [
+    -29.9,
+    -70.7
+  ],
+  "Río Copiapó": [
+    -27.4,
+    -69.9
+  ],
+  "Salar de Arizaro": [
+    -24.8,
+    -67.8
+  ],
+  "Sector Medio Río Loa": [
+    -22.3,
+    -69.0
+  ],
+  "Cuenca Alta Río Copiapó": [
+    -27.2,
+    -69.5
+  ],
+  "Río Bacadéhuachi": [
+    30.2,
+    -108.8
+  ],
+  "Salar de Maricunga": [
+    -27.0,
+    -69.0
+  ],
+  "Río Huasco": [
+    -28.5,
+    -70.2
+  ],
+  "Sistema de cuencas Moa-Levisa-Mayarí": [
+    20.7,
+    -75.2
+  ],
+  "Cuenca distrito minero Sierra Gorda": [
+    -22.9,
+    -69.3
+  ],
+  "Río Conchos": [
+    28.0,
+    -105.7
+  ],
+  "Cuenca Lerma-Chapala (lago)": [
+    20.3,
+    -103.0
+  ],
+  "Salar de Pastos Grandes": [
+    -24.43,
+    -66.83
+  ],
+  "Río Aconcagua": [
+    -32.8,
+    -70.6
+  ],
+  "Sistema de cuencas Yuna-Camú": [
+    19.3,
+    -70.1
+  ],
+  "Cuencas endorreicas Sierra Santa Cruz": [
+    24.5,
+    -111.0
+  ],
+  "Cuenca Río Jequitinhonha-Mucuri": [
+    -16.5,
+    -41.0
+  ],
+  "Río Tambo": [
+    -15.3,
+    -74.8
+  ],
+  "Salar de Uyuni": [
+    -20.3,
+    -66.8
+  ],
+  "Río Santa": [
+    -9.1,
+    -77.8
+  ],
+  "Cuenca Río San Juan": [
+    -31.5,
+    -68.5
+  ],
+  "Salar de Rincón": [
+    -24.2,
+    -67.5
+  ],
+  "Río Apurímac": [
+    -13.6,
+    -73.3
+  ],
+  "Subcuenca Salar Atacama SO": [
+    -23.7,
+    -68.4
+  ],
+  "Salinas Grandes": [
+    -23.5,
+    -65.9
+  ],
+  "Río Mantaro": [
+    -12.1,
+    -75.2
+  ],
+  "Subcuenca Río São Francisco (Minas Gerais)": [
+    -16.5,
+    -45.5
+  ],
+  "Subcuenca Río Itacaiúnas (Cateté)": [
+    -6.0,
+    -50.0
+  ],
+  "Cuenca Alta Río Paraopeba": [
+    -20.1,
+    -44.2
+  ],
+  "Salar de Coipasa": [
+    -19.3,
+    -68.2
+  ],
+  "Río Rímac": [
+    -11.9,
+    -76.8
+  ],
+  "Cuenca Río Zamora-Santiago": [
+    -3.5,
+    -78.5
+  ],
+  "Río Rapel": [
+    -34.0,
+    -71.8
+  ],
+  "Cuenca Río Polochic y Lago Izabal": [
+    15.4,
+    -89.5
+  ],
+  "Cuenca Río Parauapebas (Carajás)": [
+    -6.1,
+    -50.0
+  ]
+};
+        const proyectosData = [
+  {
+    "nombre": "Escondida",
+    "empresa": "BHP",
+    "año": 1990,
+    "coords": [
+      -24.2,
+      -69.1
+    ],
+    "tipo": "Cobre",
+    "status": "Operando",
+    "produccion": "~1.2 M ton Cu/año"
+  },
+  {
+    "nombre": "Collahuasi",
+    "empresa": "Glencore/Anglo American",
+    "año": 1999,
+    "coords": [
+      -21.0,
+      -68.7
+    ],
+    "tipo": "Cobre",
+    "status": "Operando",
+    "produccion": "~500k ton Cu/año"
+  },
+  {
+    "nombre": "Chuquicamata",
+    "empresa": "Codelco",
+    "año": 1915,
+    "coords": [
+      -22.3,
+      -68.9
+    ],
+    "tipo": "Cobre",
+    "status": "Operando",
+    "produccion": "~400k ton Cu/año"
+  },
+  {
+    "nombre": "El Teniente",
+    "empresa": "Codelco",
+    "año": 1905,
+    "coords": [
+      -34.1,
+      -70.4
+    ],
+    "tipo": "Cobre+Mo",
+    "status": "Operando",
+    "produccion": "~470k ton Cu/año"
+  },
+  {
+    "nombre": "Los Pelambres",
+    "empresa": "Antofagasta Minerals",
+    "año": 2000,
+    "coords": [
+      -31.8,
+      -70.5
+    ],
+    "tipo": "Cobre+Mo",
+    "status": "Operando",
+    "produccion": "~380k ton Cu/año"
+  },
+  {
+    "nombre": "Andina",
+    "empresa": "Codelco",
+    "año": 1970,
+    "coords": [
+      -32.9,
+      -70.3
+    ],
+    "tipo": "Cobre+Mo",
+    "status": "Operando",
+    "produccion": "~220k ton Cu/año"
+  },
+  {
+    "nombre": "Salar de Atacama (SQM)",
+    "empresa": "SQM",
+    "año": 1995,
+    "coords": [
+      -23.5,
+      -68.2
+    ],
+    "tipo": "Litio",
+    "status": "Operando",
+    "produccion": "~130k ton LCE/año"
+  },
+  {
+    "nombre": "Salar de Atacama (Albemarle)",
+    "empresa": "Albemarle",
+    "año": 1984,
+    "coords": [
+      -23.4,
+      -68.3
+    ],
+    "tipo": "Litio",
+    "status": "Operando",
+    "produccion": "~110k ton LCE/año"
+  },
+  {
+    "nombre": "Hombre Muerto (Livent)",
+    "empresa": "Livent",
+    "año": 1997,
+    "coords": [
+      -25.4,
+      -66.9
+    ],
+    "tipo": "Litio",
+    "status": "Operando",
+    "produccion": "~20k ton LCE/año"
+  },
+  {
+    "nombre": "Olaroz-Cauchari",
+    "empresa": "Allkem",
+    "año": 2014,
+    "coords": [
+      -23.8,
+      -66.5
+    ],
+    "tipo": "Litio",
+    "status": "Operando",
+    "produccion": "~25k ton LCE/año"
+  },
+  {
+    "nombre": "Cerrejón",
+    "empresa": "Glencore",
+    "año": 1985,
+    "coords": [
+      11.0,
+      -72.7
+    ],
+    "tipo": "Carbón",
+    "status": "Operando",
+    "produccion": "~24 M ton/año"
+  },
+  {
+    "nombre": "Cuajone",
+    "empresa": "Southern Copper",
+    "año": 1976,
+    "coords": [
+      -17.0,
+      -70.7
+    ],
+    "tipo": "Cobre",
+    "status": "Operando",
+    "produccion": "~300k ton Cu/año"
+  },
+  {
+    "nombre": "Toquepala",
+    "empresa": "Southern Copper",
+    "año": 1960,
+    "coords": [
+      -17.3,
+      -70.6
+    ],
+    "tipo": "Cobre",
+    "status": "Operando",
+    "produccion": "~260k ton Cu/año"
+  },
+  {
+    "nombre": "Cerro Verde",
+    "empresa": "Freeport",
+    "año": 1976,
+    "coords": [
+      -16.5,
+      -71.6
+    ],
+    "tipo": "Cobre",
+    "status": "Operando",
+    "produccion": "~580k ton Cu/año"
+  },
+  {
+    "nombre": "Antamina",
+    "empresa": "Glencore/BHP",
+    "año": 2001,
+    "coords": [
+      -9.7,
+      -77.1
+    ],
+    "tipo": "Cobre+Zinc",
+    "status": "Operando",
+    "produccion": "~450k ton Cu/año"
+  },
+  {
+    "nombre": "Yanacocha",
+    "empresa": "Newmont",
+    "año": 1993,
+    "coords": [
+      -7.0,
+      -78.5
+    ],
+    "tipo": "Oro",
+    "status": "Operando",
+    "produccion": "~400k oz Au/año"
+  },
+  {
+    "nombre": "Carajas",
+    "empresa": "Vale",
+    "año": 1985,
+    "coords": [
+      -6.1,
+      -50.2
+    ],
+    "tipo": "Hierro",
+    "status": "Operando",
+    "produccion": "~170 M ton/año"
+  },
+  {
+    "nombre": "Trombetas",
+    "empresa": "Mineração Rio do Norte",
+    "año": 1979,
+    "coords": [
+      -1.7,
+      -56.2
+    ],
+    "tipo": "Bauxita",
+    "status": "Operando",
+    "produccion": "~18 M ton/año"
+  },
+  {
+    "nombre": "Minera Candelaria",
+    "empresa": "Lundin Mining",
+    "año": 1994,
+    "coords": [
+      -27.5,
+      -70.2
+    ],
+    "tipo": "Cobre+Oro",
+    "status": "Operando",
+    "produccion": "~130k ton Cu/año"
+  },
+  {
+    "nombre": "Minera Los Bronces",
+    "empresa": "Anglo American",
+    "año": 1925,
+    "coords": [
+      -33.2,
+      -70.3
+    ],
+    "tipo": "Cobre+Mo",
+    "status": "Operando",
+    "produccion": "~320k ton Cu/año"
+  },
+  {
+    "nombre": "Caserones",
+    "empresa": "Lundin Mining",
+    "año": 2013,
+    "coords": [
+      -27.2,
+      -69.5
+    ],
+    "tipo": "Cobre+Mo",
+    "status": "Operando",
+    "produccion": "~150k ton Cu/año"
+  },
+  {
+    "nombre": "Quellaveco",
+    "empresa": "Anglo American",
+    "año": 2022,
+    "coords": [
+      -17.1,
+      -70.6
+    ],
+    "tipo": "Cobre",
+    "status": "En construcción",
+    "produccion": "~300k ton Cu/año (proyectado)"
+  },
+  {
+    "nombre": "Pascua-Lama",
+    "empresa": "Barrick Gold",
+    "año": 1899,
+    "coords": [
+      -29.3,
+      -70.0
+    ],
+    "tipo": "Oro+Plata",
+    "status": "Paralizado",
+    "produccion": "Paralizado desde 2013"
+  },
+  {
+    "nombre": "Spence",
+    "empresa": "BHP",
+    "año": 2006,
+    "coords": [
+      -22.4,
+      -69.2
+    ],
+    "tipo": "Cobre",
+    "status": "Operando",
+    "produccion": "~180k ton Cu/año"
+  },
+  {
+    "nombre": "Sierra Gorda",
+    "empresa": "KGHM/Sumitomo",
+    "año": 2014,
+    "coords": [
+      -22.9,
+      -69.3
+    ],
+    "tipo": "Cobre+Mo",
+    "status": "Operando",
+    "produccion": "~130k ton Cu/año"
+  },
+  {
+    "nombre": "Centinela",
+    "empresa": "Antofagasta Minerals",
+    "año": 2015,
+    "coords": [
+      -23.9,
+      -69.8
+    ],
+    "tipo": "Cobre",
+    "status": "Operando",
+    "produccion": "~250k ton Cu/año"
+  },
+  {
+    "nombre": "Zaldívar",
+    "empresa": "Antofagasta Minerals",
+    "año": 1995,
+    "coords": [
+      -24.2,
+      -69.1
+    ],
+    "tipo": "Cobre",
+    "status": "Operando",
+    "produccion": "~120k ton Cu/año"
+  },
+  {
+    "nombre": "Ministro Hales",
+    "empresa": "Codelco",
+    "año": 2014,
+    "coords": [
+      -22.3,
+      -68.9
+    ],
+    "tipo": "Cobre",
+    "status": "Operando",
+    "produccion": "~180k ton Cu/año"
+  }
+];
+        
+        const map = L.map('map').setView([-15, -70], 4);
+        const basemaps = {
+            topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap, OpenTopoMap', maxZoom: 17 }),
+            street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }),
+            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri', maxZoom: 19 })
+        };
+        basemaps.topo.addTo(map);
+        document.querySelectorAll('input[name="basemap"]').forEach(r => r.addEventListener('change', e => {
+            Object.values(basemaps).forEach(l => map.removeLayer(l));
+            basemaps[e.target.value].addTo(map);
+        }));
+        
+        const cuencasLayer = L.layerGroup().addTo(map);
+        const proyectosLayer = L.layerGroup().addTo(map);
+        
+        document.getElementById('toggleCuencas').addEventListener('click', function() {
+            this.classList.toggle('active');
+            this.classList.contains('active') ? cuencasLayer.addTo(map) : map.removeLayer(cuencasLayer);
+        });
+        
+        document.getElementById('toggleProyectos').addEventListener('click', function() {
+            this.classList.toggle('active');
+            this.classList.contains('active') ? proyectosLayer.addTo(map) : map.removeLayer(proyectosLayer);
+        });
+        
+        function getColor(s) { return s >= 2.5 ? '#8e44ad' : s >= 2.0 ? '#e74c3c' : s >= 1.5 ? '#f1c40f' : '#27ae60'; }
+        function getStatusColor(s) { return s === 'Operando' ? '#2ecc71' : s === 'En construcción' ? '#f39c12' : s === 'Paralizado' ? '#e74c3c' : '#95a5a6'; }
+        function getScoreClass(s) { return s >= 2.5 ? 'high' : s >= 2.0 ? 'medium' : 'low'; }
+        function getRankClass(r) { return r <= 3 ? 'top3' : r <= 10 ? 'top10' : 'others'; }
+        
+        let currentRadarChart = null;
+        let currentVariablesChart = null;
+        let isPlaying = false;
+        let playInterval = null;
+        
+        cuencasData.forEach(c => {
+            const coords = coordenadas[c.cuenca];
+            if (!coords) {
+                console.warn(`⚠ Sin coordenadas: ${c.cuenca}`);
+                return;
+            }
+            const m = L.circleMarker(coords, {
+                radius: 7 + (c.rank <= 10 ? 3 : 0),
+                fillColor: getColor(c.score_final),
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            });
+            m.bindPopup(`<b>${c.cuenca}</b><br>${c.pais} - ${c.mineral}<br>Score: ${c.score_final.toFixed(2)} | Rank #${c.rank}<br><small><i>Click para detalles</i></small>`);
+            m.on('click', () => showCuencaInfo(c));
+            m.addTo(cuencasLayer);
+        });
+        
+        let proyectosMarkers = [];
+        proyectosData.forEach(p => {
+            const m = L.marker(p.coords, {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="width:12px;height:12px;background:${getStatusColor(p.status)};border:2px solid #34495e;transform:rotate(45deg);"></div>`,
+                    iconSize: [12, 12],
+                    iconAnchor: [6, 6]
+                })
+            });
+            m.bindPopup(`<b>${p.nombre}</b><br>${p.empresa} (${p.año})<br>${p.tipo} - ${p.status}<br>Producción: ${p.produccion}`);
+            m.projectYear = p.año;
+            m.addTo(proyectosLayer);
+            proyectosMarkers.push(m);
+        });
+        
+        const slider = document.getElementById('timelineSlider');
+        const yearDisplay = document.getElementById('yearDisplay');
+        
+        function updateTimeline(y) {
+            yearDisplay.textContent = y;
+            proyectosMarkers.forEach(m => m.setOpacity(m.projectYear <= y ? 1 : 0.2));
+        }
+        
+        slider.addEventListener('input', e => updateTimeline(parseInt(e.target.value)));
+        
+        function togglePlay() {
+            const btn = document.getElementById('playPauseBtn');
+            if (isPlaying) {
+                clearInterval(playInterval);
+                btn.textContent = '▶ Play';
+                isPlaying = false;
+            } else {
+                btn.textContent = '⏸ Pause';
+                isPlaying = true;
+                playInterval = setInterval(() => {
+                    let y = parseInt(slider.value);
+                    y = y >= 2026 ? 1899 : y + 1;
+                    slider.value = y;
+                    updateTimeline(y);
+                }, 300);
+            }
+        }
+        
+        function showCuencaInfo(c) {
+            const panel = document.getElementById('infoPanel');
+            const content = document.getElementById('panelContent');
+            if (currentRadarChart) currentRadarChart.destroy();
+            if (currentVariablesChart) currentVariablesChart.destroy();
+            
+            content.innerHTML = `
+                <h3>${c.cuenca}<span class="rank-badge ${getRankClass(c.rank)}">RANK #${c.rank}</span></h3>
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab(event,'info')">Info</button>
+                    <button class="tab" onclick="switchTab(event,'scores')">Scores</button>
+                    <button class="tab" onclick="switchTab(event,'charts')">Gráficos</button>
+                </div>
+                
+                <div id="info" class="tab-content active">
+                    <div class="info-section">
+                        <div class="section-title">📍 UBICACIÓN</div>
+                        <div class="info-item">
+                            <div class="info-label">País</div>
+                            <div class="info-value">${c.pais}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Región</div>
+                            <div class="info-value">${c.region}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <div class="section-title">⛏️ MINERÍA</div>
+                        <div class="info-item">
+                            <div class="info-label">Mineral</div>
+                            <div class="info-value">${c.mineral}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Empresas</div>
+                            <div class="info-value">${c.empresas}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Producción</div>
+                            <div class="info-value">${c.produccion} (${c.prod_pct})</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Reservas</div>
+                            <div class="info-value">${c.reservas} (${c.reservas_pct})</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <div class="section-title">💧 RECURSOS HÍDRICOS</div>
+                        <div class="info-item">
+                            <div class="info-label">Precipitación</div>
+                            <div class="info-value">${c.precipitacion}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Estrés Hídrico</div>
+                            <div class="info-value">${c.bws} - ${c.wri}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <div class="section-title">🌳 AMBIENTE & ECONOMÍA</div>
+                        <div class="info-item">
+                            <div class="info-label">Áreas Protegidas</div>
+                            <div class="info-value">${c.areas_protegidas}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Actividades Económicas</div>
+                            <div class="info-value">${c.actividades}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <div class="section-title">👥 POBLACIÓN & COMUNIDADES</div>
+                        <div class="info-item">
+                            <div class="info-label">Población</div>
+                            <div class="info-value">${c.poblacion}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Comunidades Indígenas</div>
+                            <div class="info-value">${c.comunidades}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <div class="section-title">🔧 DATOS DISPONIBLES</div>
+                        <div class="info-item">
+                            <div class="info-label">Redes de Monitoreo</div>
+                            <div class="info-value">${c.redes_monitoreo}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Información</div>
+                            <div class="info-value">${c.info_disponible}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="scores" class="tab-content">
+                    <div style="margin: 12px 0; padding: 10px; background: #ecf0f1; border-radius: 5px;">
+                        <div class="score-row"><span class="score-label">Score Final:</span><span class="score-value ${getScoreClass(c.score_final)}">${c.score_final.toFixed(2)}</span></div>
+                    </div>
+                    <div style="margin: 12px 0; padding: 10px; background: #ecf0f1; border-radius: 5px;">
+                        <h4 style="font-size: 12px; color: #2c3e50; margin-bottom: 8px;">Dimensiones</h4>
+                        <div class="score-row"><span class="score-label">D1 - Impacto Minero:</span><span class="score-value ${getScoreClass(c.d1_score)}">${c.d1_score.toFixed(2)}</span></div>
+                        <div class="score-row"><span class="score-label">D2 - Criticidad Hídrica:</span><span class="score-value ${getScoreClass(c.d2_score)}">${c.d2_score.toFixed(2)}</span></div>
+                        <div class="score-row"><span class="score-label">D3 - Vulnerabilidad Social:</span><span class="score-value ${getScoreClass(c.d3_score)}">${c.d3_score.toFixed(2)}</span></div>
+                        <div class="score-row"><span class="score-label">D4 - Viabilidad Técnica:</span><span class="score-value ${getScoreClass(c.d4_score)}">${c.d4_score.toFixed(2)}</span></div>
+                    </div>
+                </div>
+                
+                <div id="charts" class="tab-content">
+                    <h4 style="font-size: 12px; color: #2c3e50; margin: 12px 0 6px 0;">Dimensiones</h4>
+                    <div class="chart-container"><canvas id="radarChart"></canvas></div>
+                    <h4 style="font-size: 12px; color: #2c3e50; margin: 12px 0 6px 0;">Variables</h4>
+                    <div class="chart-container"><canvas id="variablesChart"></canvas></div>
+                </div>
+            `;
+            panel.classList.add('active');
+            window.currentCuenca = c;
+        }
+        
+        function createRadarChart(c) {
+            const ctx = document.getElementById('radarChart');
+            if (!ctx) return;
+            if (currentRadarChart) currentRadarChart.destroy();
+            currentRadarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['D1:\\nImpacto', 'D2:\\nCriticidad', 'D3:\\nVulnera.', 'D4:\\nViabilidad'],
+                    datasets: [{
+                        data: [c.d1_score, c.d2_score, c.d3_score, c.d4_score],
+                        fill: true,
+                        backgroundColor: 'rgba(52,152,219,0.2)',
+                        borderColor: 'rgb(52,152,219)',
+                        pointBackgroundColor: 'rgb(52,152,219)',
+                        pointRadius: 4
+                    }]
+                },
+                options: { scales: { r: { suggestedMin: 0, suggestedMax: 3, ticks: { stepSize: 0.5 }}}, plugins: { legend: { display: false }}}
+            });
+        }
+        
+        function createVariablesChart(c) {
+            const ctx = document.getElementById('variablesChart');
+            if (!ctx) return;
+            if (currentVariablesChart) currentVariablesChart.destroy();
+            currentVariablesChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Prod%', 'Res%', 'BWS', 'AP', 'Usos', 'Pob', 'Com', 'Info'],
+                    datasets: [{
+                        data: [c.n11, c.n12, c.n21, c.n22, c.n23, c.n31, c.n32, c.n41],
+                        fill: true,
+                        backgroundColor: 'rgba(231,76,60,0.2)',
+                        borderColor: 'rgb(231,76,60)',
+                        pointBackgroundColor: 'rgb(231,76,60)',
+                        pointRadius: 4
+                    }]
+                },
+                options: { scales: { r: { suggestedMin: 0, suggestedMax: 3, ticks: { stepSize: 1 }}}, plugins: { legend: { display: false }}}
+            });
+        }
+        
+        function closePanel() {
+            document.getElementById('infoPanel').classList.remove('active');
+        }
+        
+        function switchTab(event, tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            if (tabName === 'charts' && window.currentCuenca) {
+                setTimeout(() => {
+                    createRadarChart(window.currentCuenca);
+                    createVariablesChart(window.currentCuenca);
+                }, 50);
+            }
+        }
+        
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            if (term.length < 2) return;
+            const found = cuencasData.find(c => c.cuenca.toLowerCase().includes(term));
+            if (found) {
+                const coords = coordenadas[found.cuenca];
+                if (coords) {
+                    map.setView(coords, 8);
+                    showCuencaInfo(found);
+                }
+            }
+        });
+        
+        updateTimeline(2025);
+        console.log(`✅ ${cuencasData.length} cuencas | ${proyectosData.length} proyectos | Actividades económicas corregidas`);
+    </script>
+</body>
+</html>
